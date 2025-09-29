@@ -3,9 +3,22 @@ import { motion } from 'framer-motion';
 import UpcomingEvents from './Upcoming';
 import { CalendarClockIcon, GroupIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import AppointmentModal from '../model/Appointment';
 
 const LadingPage: React.FC = () => {
     const { t } = useTranslation();
+    const [isopenModelAppoint, setIsOpenModelAppoint] = useState(false);
+
+    // Hàm để mở modal
+    const handleOpenModal = () => {
+        setIsOpenModelAppoint(true);
+    };
+
+    // Hàm để đóng modal
+    const handleCloseModal = () => {
+        setIsOpenModelAppoint(false);
+    };
 
     // Mảng chứa các đường dẫn ảnh cho slideshow
     const images = [
@@ -32,7 +45,7 @@ const LadingPage: React.FC = () => {
     ]
 
     return (
-        <div className="mt-[-80px]">
+        <div className="mt-[-80px] relative">
             {/* --- Phần giới thiệu chính (Logo & Tiêu đề) --- */}
             <section className="relative w-full h-screen bg-gradient-to-bl from-purple-600 via-slate-900/20 to-purple-700">
                 <motion.video
@@ -59,6 +72,7 @@ const LadingPage: React.FC = () => {
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.9 }}
+                                onClick={handleOpenModal} // Sử dụng hàm mới để mở modal
                                 className="flex md:text-2xl text-xl items-center justify-center md:gap-2 gap-1 border-2 bg-white/90 backdrop-blur-md text-purple-600 hover:text-white border-purple-600 hover:border-blue-700 hover:bg-blue-700 font-semibold py-3 px-4 rounded-2xl">
                                 <CalendarClockIcon className="w-6 h-6 mr-2" />
                                 {t('book_appointment')}
@@ -98,6 +112,7 @@ const LadingPage: React.FC = () => {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.9 }}
+                            onClick={handleOpenModal} // Sử dụng hàm mới để mở modal
                             className="flex items-center md:w-auto w-full justify-center md:gap-2 gap-1 bg-purple-600 hover:bg-blue-700 cursor-pointer text-white font-bold py-3 px-6 rounded-full transition-colors duration-300">
                             <CalendarClockIcon size={30} /> {t('book_consultation_now')}
                         </motion.button>
@@ -163,7 +178,7 @@ const LadingPage: React.FC = () => {
             <UpcomingEvents />
 
             {/* --- Phần thông tin chung về đối tác--- */}
-            <section className="py-20 bg-purple-100 text-white  flex items-center justify-center">
+            <section className="py-20 bg-purple-100 text-white  flex items-center justify-center">
                 <div className="container mx-auto px-4">
                     <motion.h2
                         initial={{ opacity: 0, y: -20 }}
@@ -193,8 +208,16 @@ const LadingPage: React.FC = () => {
                             ))
                         }
                     </motion.div>
+
+
                 </div>
             </section>
+
+            {/* Tích hợp component AppointmentModal */}
+            <AppointmentModal
+                isOpen={isopenModelAppoint}
+                onClose={handleCloseModal}
+            />
         </div>
     );
 };
