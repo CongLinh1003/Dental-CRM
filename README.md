@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏥 Dự Án Quản Lý Nha Khoa
 
-## Getting Started
+Một ứng dụng web hiện đại giúp các phòng khám nha khoa quản lý lịch hẹn, bệnh nhân và hồ sơ dịch vụ một cách hiệu quả.
 
-First, run the development server:
+## 📖 Mục lục
+
+* [Giới thiệu](#-giới-thiệu)
+* [Tính năng](#-tính-năng)
+* [Công nghệ sử dụng](#-công-nghệ-sử-dụng)
+* [Cài đặt và Chạy dự án](#-cài-đặt-và-chạy-dự-án)
+* [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
+* [Đóng góp](#-đóng-góp)
+* [Tác giả](#-tác-giả)
+* [Giấy phép](#-giấy-phép)
+
+---
+
+## ✨ Giới thiệu
+
+Dự án này là một hệ thống quản lý phòng khám nha khoa, được xây dựng để đơn giản hóa các tác vụ hàng ngày như:
+
+* Quản lý thông tin bệnh nhân.
+* Đặt và quản lý lịch hẹn.
+* Theo dõi hồ sơ điều trị và dịch vụ đã sử dụng.
+* Thống kê doanh thu và phân tích hiệu quả dịch vụ.
+
+Giao diện được thiết kế hiện đại, thân thiện với người dùng và tối ưu trên nhiều thiết bị.
+
+## 🌟 Tính năng
+
+* **Dashboard trực quan**: Cung cấp cái nhìn tổng quan về các chỉ số quan trọng.
+* **Quản lý lịch hẹn**: Tạo, chỉnh sửa và hủy lịch hẹn dễ dàng.
+* **Hồ sơ bệnh nhân**: Lưu trữ thông tin cá nhân, lịch sử khám bệnh và hồ sơ tài chính.
+* **Quản lý dịch vụ**: Thêm, chỉnh sửa và vô hiệu hóa các dịch vụ nha khoa.
+* **Thống kê và báo cáo**: Biểu đồ phân tích doanh thu và lượt sử dụng dịch vụ.
+* **Giao diện đáp ứng (Responsive)**: Hoạt động tốt trên cả máy tính và điện thoại.
+
+## 🛠️ Công nghệ sử dụng
+
+* **Frontend**:
+    * **ReactJS** - Thư viện JavaScript để xây dựng giao diện.
+    * **Tailwind CSS** - Framework CSS để thiết kế nhanh chóng.
+    * **Framer Motion** - Thư viện để tạo hiệu ứng chuyển động mượt mà.
+    * **Recharts** - Thư viện biểu đồ mạnh mẽ.
+* **Backend**:
+    * [Tên công nghệ Backend, ví dụ: Node.js, Express, .NET]
+* **Cơ sở dữ liệu**:
+    * [Tên cơ sở dữ liệu, ví dụ: MongoDB, PostgreSQL, MySQL]
+
+## 🚀 Cài đặt và Chạy dự án
+
+Thực hiện theo các bước sau để thiết lập và chạy dự án trên máy cục bộ của bạn.
+
+**Yêu cầu:**
+* Node.js (phiên bản 14+)
+* Yarn hoặc npm
+
+### Bước 1: Sao chép repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+git clone [https://github.com/your-username/your-repository-name.git](https://github.com/your-username/your-repository-name.git)
+cd your-repository-name
