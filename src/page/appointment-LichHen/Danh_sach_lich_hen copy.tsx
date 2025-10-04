@@ -8,7 +8,6 @@
 // import AppointmentDetailModal from "./AppointmentDetailModal";
 // import { toast, ToastContainer } from "react-toastify";
 
-
 // const pageSize = 8;
 
 // const AppoinmentList: React.FC = () => {
@@ -31,8 +30,6 @@
 //     CANCELLED: { label: "Đã hủy", color: "px-2 py-1 text-white rounded-full bg-red-500/70" },
 //     PENDING: { label: "Chờ xác nhận", color: "px-2 py-1 text-white rounded-full bg-yellow-500/70" },
 //   };
-
-
 
 //   useEffect(() => {
 //     fetchAppointment();
@@ -60,7 +57,6 @@
 //     )
 //   });
 
-
 //   const paginatedAppointment = filteredAppointment.slice(
 //     (currentPage - 1) * pageSize,
 //     currentPage * pageSize
@@ -78,7 +74,6 @@
 //   const handlePageChangeAmonyus = (_: React.ChangeEvent<unknown>, value: number) => {
 //     setCurrentPageAmonyus(value);
 //   };
-
 
 //   // Xem chi tiết
 //   const handleOpenModal = (appointment: AppointmentResponse) => {
@@ -104,7 +99,6 @@
 //     }
 //   }
 
-
 //   return (
 //     <motion.div
 //       initial={{ opacity: 0, y: -10 }}
@@ -112,7 +106,7 @@
 //       transition={{ duration: 0.3 }}
 //       className="p-4 mb-6">
 //       <ToastContainer />
-//       <h2 className="text-2xl font-bold mb-4">Danh sách lịch hẹn 🍃</h2>
+//       <h2 className="text-2xl font-bold mb-4">Danh sách lịch hẹn 🦷</h2>
 //       {/* Hiển thi lịch hện ẩn danh */}
 //       <div className="mt-10">
 
@@ -169,13 +163,11 @@
 //                       {new Date(item.appointmentDateTime).toLocaleString("vi-VN")}
 //                     </p>
 
-
 //                     <p className="absolute top-1 right-0">
 //                       <span className={statusMap[item.status]?.color}>
 //                         {statusMap[item.status]?.label || "Không xác định"}
 //                       </span>
 //                     </p>
-
 
 //                     <p className="text-sm text-gray-700">
 //                       <span className="font-medium">Tổng tiền:</span>
@@ -309,7 +301,6 @@
 //                     </span>
 //                   </p>
 
-
 //                   <p className="text-sm text-gray-700">
 //                     <span className="font-medium">Tổng tiền:</span>
 //                     {item.totalPrice.toLocaleString("vi-VN")}đ
@@ -385,7 +376,6 @@
 //         appointment={selectedAppointment}
 //         onUpdateSuccess={fetchAppointment}
 //       />
-
 
 //     </motion.div>
 //   );

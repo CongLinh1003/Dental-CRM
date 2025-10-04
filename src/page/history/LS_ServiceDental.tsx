@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -11,28 +11,21 @@ import {
   Box,
   Pagination,
 } from "@mui/material";
-import {
-  getAllOrderPayment,
-  totalOrderAmountPayment,
-} from "../../service/apiPaymentOrder";
-import { PaymentOrderResponse } from "../../interface/PaymentOrder_interface";
+import { getAllPayment, totalAmountPayment } from "../../service/apiPayment";
+import { PaymentResponse } from "../../interface/Payment_interface";
 import { FaLeaf } from "react-icons/fa";
 
 const pageSize = 6;
-const DEFAULT_TOTAL_AMOUNT = 119000000; // Fallback when backend not ready
-const OrderPaymentHistory: React.FC = () => {
+const ServicePaymentHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentOrderResponse[]>(
-    []
-  );
-  const [totalAmount, setTotalAmount] = useState<number>(DEFAULT_TOTAL_AMOUNT);
-  const [rawTotalResponse, setRawTotalResponse] = useState<any>(null); // debug only
+  const [paymentHistory, setPaymentHistory] = useState<PaymentResponse[]>([]);
+  const [totalAmount, setTotalAmount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
 
   const fetchPaymentAll = async () => {
     try {
-      const response = await getAllOrderPayment();
+      const response = await getAllPayment();
       const now = Date.now();
       const sortedAppointments = response.sort(
         (a: { createdAt: string }, b: { createdAt: string }) => {
@@ -43,7 +36,7 @@ const OrderPaymentHistory: React.FC = () => {
       );
       setPaymentHistory(
         sortedAppointments.map(
-          (appt: PaymentOrderResponse & { isNew?: boolean }) => ({
+          (appt: PaymentResponse & { isNew?: boolean }) => ({
             ...appt,
             isNew: (now - new Date(appt.createdAt).getTime()) / 1000 < 60,
           })
@@ -56,81 +49,24 @@ const OrderPaymentHistory: React.FC = () => {
 
   const fetchTotalAmountPayment = async () => {
     try {
-      const response = await totalOrderAmountPayment();
-      setRawTotalResponse(response);
-      let value: number | undefined;
-      switch (typeof response) {
-        case "number":
-          value = response;
-          break;
-        case "string": {
-          const trimmed = response.trim();
-          if (trimmed.toLowerCase().startsWith("<!doctype")) {
-            console.warn("[totalAmount] HTML detected, using fallback");
-            break;
-          }
-          const parsed = Number(trimmed.replace(/[,\s]/g, ""));
-          if (!Number.isNaN(parsed)) value = parsed;
-          break;
-        }
-        case "object": {
-          if (response) {
-            const candidates = [
-              response.total,
-              response.amount,
-              response.data,
-              response.value,
-            ];
-            for (const c of candidates) {
-              if (typeof c === "number" && Number.isFinite(c)) {
-                value = c;
-                break;
-              }
-              if (typeof c === "string") {
-                const parsed = Number(c.replace(/[,\s]/g, ""));
-                if (!Number.isNaN(parsed)) {
-                  value = parsed;
-                  break;
-                }
-              }
-            }
-          }
-          break;
-        }
-      }
-      if (value === undefined) {
-        setTotalAmount(DEFAULT_TOTAL_AMOUNT);
-      } else {
-        setTotalAmount(value);
-      }
+      const response = await totalAmountPayment();
+      setTotalAmount(response);
     } catch (error) {
-      console.error("Error fetching total amount (using fallback):", error);
-      setTotalAmount(DEFAULT_TOTAL_AMOUNT);
+      console.error("Error fetching total amount:", error);
+      return 0;
     }
   };
 
-  const displayTotalAmount = useMemo(() => {
-    if (!Number.isFinite(totalAmount))
-      return DEFAULT_TOTAL_AMOUNT.toLocaleString("vi-VN");
-    return totalAmount.toLocaleString("vi-VN");
-  }, [totalAmount]);
-
   useEffect(() => {
-    let isMounted = true;
-    const load = async () => {
-      setLoading(true);
-      try {
-        await Promise.all([fetchPaymentAll(), fetchTotalAmountPayment()]);
-      } catch (e) {
-        // already logged inside functions
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      isMounted = false;
-    };
+    setLoading(true);
+    try {
+      fetchPaymentAll();
+      fetchTotalAmountPayment();
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
@@ -145,9 +81,9 @@ const OrderPaymentHistory: React.FC = () => {
   const filteredPaymentHistory = paymentHistory.filter((payment) => {
     const searchFields = [
       payment.transactionId,
-      payment.order.guestName,
-      payment.order.user?.name,
-      payment.order.orderItems.map((od) => od.product.nameProduct).join(", "),
+      payment.appointment.gustName,
+      payment.appointment.userId?.name,
+      payment.appointment.serviceIds.map((service) => service.name).join(", "),
       payment.bankCode,
       payment.paymentMethod,
     ];
@@ -176,7 +112,7 @@ const OrderPaymentHistory: React.FC = () => {
         </div>
         <div className="flex items-center">
           <FaLeaf className="animate-bounce text-green-400 text-xl mr-2" />
-          <span className="text-gray-600 text-sm">Đang tải dữ liệu...</span>
+          <span className="text-gray-600 text-sm">Đang và tải dữ liệu...</span>
         </div>
       </div>
     );
@@ -185,27 +121,19 @@ const OrderPaymentHistory: React.FC = () => {
   return (
     <div className="flex flex-col sm:p-4 gap-8 sm:mb-4 mb-20 sm:mt-0 mt-10">
       <p className="sm:text-2xl text-lg font-bold">
-        Lịch sử thanh toán đơn hàng🦷
+        Lịch sử thanh toán dịch vụ🦷
       </p>
 
       <div className="w-full flex justify-end items-center gap-2 sm:text-lg text-sm">
         <p>Tổng giao dịch:</p>
         <p className="p-3 bg-blue-400 text-white rounded-lg ">
-          {displayTotalAmount} VND
+          {" "}
+          {totalAmount.toLocaleString("vi-VN")} VND
         </p>
       </div>
-      {/* Optional debug block (remove in production) */}
-      {process.env.NODE_ENV === "development" &&
-        rawTotalResponse &&
-        typeof rawTotalResponse === "string" &&
-        rawTotalResponse.toLowerCase().includes("<!doctype") && (
-          <div className="text-xs text-red-500 break-all">
-            [DEBUG] API returned HTML. Fallback applied.
-          </div>
-        )}
 
       {/* Tìm kiếm */}
-      <div className="mb-1 sm:text-lg text-sm">
+      <div className="mb-1">
         <input
           type="text"
           placeholder="Tìm kiếm mã giao dịch, khách hàng, dịch vụ..."
@@ -214,6 +142,7 @@ const OrderPaymentHistory: React.FC = () => {
           onChange={handleSearchChange}
         />
       </div>
+
       <div className="w-full flex flex-col justify-center items-end gap-2 text-sm">
         <span className="text-gray-600">
           Số lượng giao dịch: {paymentHistory.length}
@@ -270,16 +199,17 @@ const OrderPaymentHistory: React.FC = () => {
                 {paginatedPaymentHistory.map((payment) => (
                   <>
                     {payment.status != "PENDING" ? (
-                      <TableRow key={payment.id} className="hover:bg-gray-100">
+                      <TableRow key={payment.id} className="hover:bg-gray-100 ">
                         <TableCell>{payment.transactionId}</TableCell>
                         <TableCell>
-                          {payment.order.guestName
-                            ? payment.order.guestName + " " + payment.id
-                            : payment.order.user?.name || "Khách hàng ẩn danh"}
+                          {payment.appointment.gustName
+                            ? payment.appointment.gustName + " " + payment.id
+                            : payment.appointment.userId?.name ||
+                              "Khách hàng ẩn danh"}
                         </TableCell>
                         <TableCell>
-                          {payment.order.orderItems
-                            .map((od) => od.product.nameProduct)
+                          {payment.appointment.serviceIds
+                            .map((service) => service.name)
                             .join(", ")}
                         </TableCell>
                         <TableCell className="text-right">
@@ -305,17 +235,18 @@ const OrderPaymentHistory: React.FC = () => {
                     ) : (
                       <TableRow
                         key={payment.id}
-                        className="hover:bg-gray-100 bg-red-200/40"
+                        className="hover:bg-gray-100  bg-red-200/40"
                       >
                         <TableCell>{payment.transactionId}</TableCell>
                         <TableCell>
-                          {payment.order.guestName
-                            ? payment.order.guestName + " " + payment.id
-                            : payment.order.user?.name || "Khách hàng ẩn danh"}
+                          {payment.appointment.gustName
+                            ? payment.appointment.gustName + " " + payment.id
+                            : payment.appointment.userId?.name ||
+                              "Khách hàng ẩn danh"}
                         </TableCell>
                         <TableCell>
-                          {payment.order.orderItems
-                            .map((od) => od.product.nameProduct)
+                          {payment.appointment.serviceIds
+                            .map((service) => service.name)
                             .join(", ")}
                         </TableCell>
                         <TableCell className="text-right">
@@ -370,4 +301,4 @@ const OrderPaymentHistory: React.FC = () => {
   );
 };
 
-export default OrderPaymentHistory;
+export default ServicePaymentHistory;

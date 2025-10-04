@@ -1,5 +1,9 @@
 import axios from "axios";
-import { CategoryForm, ServiceSPAForm, ServiceSPAFormUpdate } from "../interface/ServiceSPA_interface";
+import {
+  CategoryForm,
+  ServiceDentalForm,
+  ServiceDentalFormUpdate,
+} from "../interface/ServiceSPA_interface";
 
 // Khởi tạo axios instance
 const api = axios.create({
@@ -26,7 +30,6 @@ export const getUserById = async (id: number) => {
   }
 };
 
-
 //Role - Quyền -----------------------------------------------------------------------------------------------------------
 // Lấy danh sách quyền
 export const getRoles = async () => {
@@ -42,10 +45,9 @@ export const getRoles = async () => {
   }
 };
 
+// Dịch vụ ----------------------------------------------------------------
 
-// Dịch vụ SPA ----------------------------------------------------------------
-
-export const getServiceSPA = async () => {
+export const getServiceDental = async () => {
   try {
     const response = await api.get("/service-spa");
     return response.data;
@@ -58,7 +60,7 @@ export const getServiceSPA = async () => {
   }
 };
 
-export const addServiceSPA = async (data: ServiceSPAForm) => {
+export const addServiceDental = async (data: ServiceDentalForm) => {
   try {
     const response = await api.post("/service-spa", data);
     return response.data;
@@ -71,8 +73,7 @@ export const addServiceSPA = async (data: ServiceSPAForm) => {
   }
 };
 
-
-export const deleteServiceSPA = async (id: number) => {
+export const deleteServiceDental = async (id: number) => {
   try {
     const response = await api.delete(`/service-spa/${id}`);
     console.log("API Response:", response.data);
@@ -86,7 +87,10 @@ export const deleteServiceSPA = async (id: number) => {
   }
 };
 
-export const updateServiceSPA = async (id: number, data: ServiceSPAFormUpdate) => {
+export const updateServiceDental = async (
+  id: number,
+  data: ServiceDentalFormUpdate
+) => {
   try {
     const response = await api.put(`/service-spa/${id}`, data);
     return response.data;
@@ -94,14 +98,14 @@ export const updateServiceSPA = async (id: number, data: ServiceSPAFormUpdate) =
     if (axios.isAxiosError(error) && error.response) {
       throw error;
     } else {
-      throw new Error("Failed to update service SPA.");
+      throw new Error("Failed to update Dental service.");
     }
   }
 };
 
 // Activate the service
 
-export const activateServiceSPA = async (id: number) => {
+export const activateServiceDental = async (id: number) => {
   try {
     const response = await api.put(`/service-spa/activate/${id}`);
     return response.data;
@@ -109,14 +113,14 @@ export const activateServiceSPA = async (id: number) => {
     if (axios.isAxiosError(error) && error.response) {
       throw error;
     } else {
-      throw new Error("Failed to activate service SPA.");
+      throw new Error("Failed to activate Dental service.");
     }
   }
 };
 
 // Deactivate the service
 
-export const deactivateServiceSPA = async (id: number) => {
+export const deactivateServiceDental = async (id: number) => {
   try {
     const response = await api.put(`/service-spa/deactivate/${id}`);
     return response.data;
@@ -124,11 +128,10 @@ export const deactivateServiceSPA = async (id: number) => {
     if (axios.isAxiosError(error) && error.response) {
       throw error;
     } else {
-      throw new Error("Failed to deactivate service SPA.");
+      throw new Error("Failed to deactivate Dental service.");
     }
   }
 };
-
 
 // Category - Danh mục ----------------------------------------------------------------
 
@@ -147,7 +150,7 @@ export const getCategories = async () => {
 
 export const addCategory = async (data: CategoryForm) => {
   try {
-    const response = await api.post("/categories",  data );
+    const response = await api.post("/categories", data);
     return response.data;
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
@@ -158,12 +161,11 @@ export const addCategory = async (data: CategoryForm) => {
   }
 };
 
-
 // Thống kế tổng số lượng dịch vụ ----------------------------------------------------------------
 
-export const getCountServiceSPA = async () => {
+export const getCountServiceDental = async () => {
   try {
-    const response = await api.get("/service-spa/count");
+    const response = await api.get("/service-dental/count");
     return response.data;
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
@@ -176,7 +178,7 @@ export const getCountServiceSPA = async () => {
 
 // Thống kê số lượng dịch vụ theo danh mục
 
-export const getCountServiceSPAByCategory = async () => {
+export const getCountServiceDentalByCategory = async () => {
   try {
     const response = await api.get("/service-spa/count-by-category");
     return response.data;
@@ -189,33 +191,31 @@ export const getCountServiceSPAByCategory = async () => {
   }
 };
 
-
 // Xuất sang Excel
 
-export const exportServiceSPAToExcel = async () => {
+export const exportServiceDentalToExcel = async () => {
   try {
     const response = await api.get("/service-spa/export/excel", {
-      responseType: 'blob',
+      responseType: "blob",
     });
 
     const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
 
     // Lấy ngày tháng năm hiện tại
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
-    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, "0"); // Tháng bắt đầu từ 0
+    const day = String(now.getDate()).padStart(2, "0");
 
     // Tạo tên file kết hợp
     const filename = `Danh_sach_dich_vu_${year}${month}${day}.xlsx`;
-    link.setAttribute('download', filename);
+    link.setAttribute("download", filename);
 
     document.body.appendChild(link);
     link.click();
     window.URL.revokeObjectURL(url);
-
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
       throw error;

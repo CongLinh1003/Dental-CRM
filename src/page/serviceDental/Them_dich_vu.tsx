@@ -1,33 +1,43 @@
 import React, { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
-import { getCategories, addServiceSPA, addCategory } from "../../service/apiService"; 
+import {
+  getCategories,
+  addServiceDental,
+  addCategory,
+} from "../../service/apiService";
 import { CloudUpload, Delete, LoaderCircleIcon } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios, { AxiosResponse } from "axios";
-import { motion } from 'framer-motion'
-import { Category, CategoryForm, CloudinaryResponse, ServiceSPAForm } from "../../interface/ServiceSPA_interface";
+import { motion } from "framer-motion";
+import {
+  Category,
+  CategoryForm,
+  CloudinaryResponse,
+  ServiceDentalForm,
+} from "../../interface/ServiceSPA_interface";
 import { DeleteForever } from "@mui/icons-material";
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const SERVICESPA = import.meta.env.VITE_CLOUDINARY_UPLOAD_SERVICESPA;
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
-
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
 const AddService: React.FC = () => {
-  const { register, handleSubmit, control, reset } = useForm<ServiceSPAForm>({
-    defaultValues: {
-      name: "",
-      description: "",
-      price: 0,
-      duration: 0,
-      categoryId: 0,
-      imageUrls: [],
-      serviceType: "",
-      steps: [{ stepOrder: 1, description: "" }],
-    },
-  });
+  const { register, handleSubmit, control, reset } = useForm<ServiceDentalForm>(
+    {
+      defaultValues: {
+        name: "",
+        description: "",
+        price: 0,
+        duration: 0,
+        categoryId: 0,
+        imageUrls: [],
+        serviceType: "",
+        steps: [{ stepOrder: 1, description: "" }],
+      },
+    }
+  );
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -38,7 +48,7 @@ const AddService: React.FC = () => {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]); // Chứa URL của ảnh đã chọn
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [categoryName, setCategoryName] = useState('');
+  const [categoryName, setCategoryName] = useState("");
 
   useEffect(() => {
     fetchCategories();
@@ -47,10 +57,21 @@ const AddService: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const response = await getCategories();
-      setCategories(response);
+      // Chuẩn hoá dữ liệu trả về thành mảng Category
+      const normalized: Category[] = normalizeCategories(response);
+      setCategories(normalized);
     } catch (error) {
       console.error("Lỗi tải danh mục:", error);
     }
+  };
+
+  // Hàm chuẩn hoá dữ liệu danh mục (phòng trường hợp backend trả về nhiều cấu trúc khác nhau)
+  const normalizeCategories = (raw: any): Category[] => {
+    if (Array.isArray(raw)) return raw as Category[];
+    if (Array.isArray(raw?.data)) return raw.data as Category[]; // { data: [...] }
+    if (Array.isArray(raw?.categories)) return raw.categories as Category[]; // { categories: [...] }
+    if (Array.isArray(raw?.content)) return raw.content as Category[]; // phân trang kiểu Spring Data
+    return [];
   };
 
   const uploadImagesToCloudinary = async (files: File[]): Promise<string[]> => {
@@ -69,7 +90,10 @@ const AddService: React.FC = () => {
       formData.append(UPLOAD_PRESET, SERVICESPA);
 
       try {
-        const response: AxiosResponse<CloudinaryResponse> = await axios.post(cloudinaryUrl, formData);
+        const response: AxiosResponse<CloudinaryResponse> = await axios.post(
+          cloudinaryUrl,
+          formData
+        );
         uploadedUrls.push(response.data.secure_url); // Only add to list if successful
       } catch (error: unknown) {
         console.error(`Lỗi upload tệp "${file.name}":`, error);
@@ -80,7 +104,7 @@ const AddService: React.FC = () => {
     return uploadedUrls;
   };
 
-  const onSubmit = async (data: ServiceSPAForm) => {
+  const onSubmit = async (data: ServiceDentalForm) => {
     setIsLoading(true);
 
     try {
@@ -91,7 +115,7 @@ const AddService: React.FC = () => {
       const finalData = { ...data, imageUrls: uploadedUrls };
 
       // Gửi dữ liệu JSON lên backend
-      await addServiceSPA(finalData); // axios response
+      await addServiceDental(finalData); // axios response
 
       toast.success("Dịch vụ đã được thêm thành công!");
       reset();
@@ -100,8 +124,7 @@ const AddService: React.FC = () => {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data?.code === 1006) {
         toast.error("Dịch vụ đã tồn tại!");
-      }
-      else {
+      } else {
         toast.error("Có lỗi xảy ra khi gửi yêu cầu.");
         console.error("Lỗi không xác định:", error);
       }
@@ -134,7 +157,6 @@ const AddService: React.FC = () => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-
   //Create Category
   const handleCreateCategory = async () => {
     console.log("handleCreateCategory called");
@@ -148,8 +170,7 @@ const AddService: React.FC = () => {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data?.code === 1006) {
         toast.error("Danh mục đã tồn tại!");
-      }
-      else {
+      } else {
         toast.error("Có lỗi xảy ra khi gửi yêu cầu.");
         console.error("Lỗi không xác định:", error);
       }
@@ -157,12 +178,20 @@ const AddService: React.FC = () => {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-      className="w-full p-10 bg-white rounded-lg shadow-md sm:mt-0 mt-10 sm:mb-4 mb-20 dark:bg-gray-800 dark:text-black">
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="w-full p-10 bg-white rounded-lg shadow-md sm:mt-0 mt-10 sm:mb-4 mb-20 dark:bg-gray-800 dark:text-black"
+    >
       <ToastContainer />
       <div className="mt-2 mb-6">
-        <label className="block text-gray-700 dark:text-white text-sm font-bold">Thêm danh mục mới
-          <i className="ml-1 text-gray-400 font-normal" >(Không ảnh hưởng đến việc thêm dịch vụ mới.)</i></label>
+        <label className="block text-gray-700 dark:text-white text-sm font-bold">
+          Thêm danh mục mới
+          <i className="ml-1 text-gray-400 font-normal">
+            (Không ảnh hưởng đến việc thêm dịch vụ mới.)
+          </i>
+        </label>
         <input
           type="text"
           className="sm:w-[30%] w-full p-3 border rounded"
@@ -181,26 +210,49 @@ const AddService: React.FC = () => {
         >
           Thêm
         </button>
-
       </div>
-      <p className="sm:text-2xl text-lg font-bold mb-4 text-gray-800 dark:text-white">Thêm Dịch Vụ Massage Mới ✨</p>
+      <p className="sm:text-2xl text-lg font-bold mb-4 text-gray-800 dark:text-white">
+        Thêm Dịch Vụ Massage Mới ✨
+      </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-10">
         <div className="sm:grid sm:grid-cols-2 sm:gap-4 flex flex-col gap-y-2">
           <div>
-            <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">Tên dịch vụ</label>
-            <input className="w-full p-3 border rounded sm:text-sm text-[14px]" placeholder="Tên dịch vụ" {...register("name")} required />
+            <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">
+              Tên dịch vụ
+            </label>
+            <input
+              className="w-full p-3 border rounded sm:text-sm text-[14px]"
+              placeholder="Tên dịch vụ"
+              {...register("name")}
+              required
+            />
           </div>
           <div>
-            <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">Loại dịch vụ</label>
-            <input className="w-full p-3 border rounded sm:text-sm text-[14px]" placeholder="Loại dịch vụ" {...register("serviceType")} required />
+            <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">
+              Loại dịch vụ
+            </label>
+            <input
+              className="w-full p-3 border rounded sm:text-sm text-[14px]"
+              placeholder="Loại dịch vụ"
+              {...register("serviceType")}
+              required
+            />
           </div>
         </div>
 
         <div className="sm:grid sm:grid-sm:cols-2 sm:gap-4 flex flex-col gap-y-2">
           <div>
-            <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">Giá dịch vụ (VND)</label>
-            <input className="w-full p-3 border rounded sm:text-sm text-[14px]" type="text" placeholder="Giá (VND)" {...register("price")} required />
+            <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">
+              Giá dịch vụ (VND)
+            </label>
+            <input
+              className="w-full p-3 border rounded sm:text-sm text-[14px]"
+              type="text"
+              placeholder="Giá (VND)"
+              {...register("price")}
+              required
+            />
           </div>
 
           <div>
@@ -226,17 +278,34 @@ const AddService: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">Mô tả</label>
-          <textarea className="w-full p-3 border rounded sm:text-sm text-[14px]" placeholder="Mô tả" {...register("description")} required />
+          <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">
+            Mô tả
+          </label>
+          <textarea
+            className="w-full p-3 border rounded sm:text-sm text-[14px]"
+            placeholder="Mô tả"
+            {...register("description")}
+            required
+          />
         </div>
         <div>
-          <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">Danh mục</label>
-          <select className="w-full p-3 border rounded sm:text-sm text-[14px]" {...register("categoryId")}>
-            {categories.map((category) => (
-              <option key={category.categoryId} value={category.categoryId}>
-                {category.categoryName}
-              </option>
-            ))}
+          <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold">
+            Danh mục
+          </label>
+          <select
+            className="w-full p-3 border rounded sm:text-sm text-[14px]"
+            {...register("categoryId", { valueAsNumber: true })}
+          >
+            <option value="">-- Chọn danh mục --</option>
+            {Array.isArray(categories) && categories.length > 0 ? (
+              categories.map((category) => (
+                <option key={category.categoryId} value={category.categoryId}>
+                  {category.categoryName}
+                </option>
+              ))
+            ) : (
+              <option disabled>Không có danh mục</option>
+            )}
           </select>
         </div>
 
@@ -264,7 +333,11 @@ const AddService: React.FC = () => {
             <div className="grid grid-cols-4 gap-y-2 gap-x-2">
               {imagePreviews.map((src, index) => (
                 <div key={index} className="relative w-full">
-                  <img src={src} alt={`Preview ${index}`} className=" w-[200px] h-[120px] sm:w-[500px] sm:h-[200px] object-cover rounded-md" />
+                  <img
+                    src={src}
+                    alt={`Preview ${index}`}
+                    className=" w-[200px] h-[120px] sm:w-[500px] sm:h-[200px] object-cover rounded-md"
+                  />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
@@ -278,11 +351,15 @@ const AddService: React.FC = () => {
           )}
         </div>
         <div>
-          <label className="block font-bold dark:text-white">Các bước thực hiện</label>
+          <label className="block font-bold dark:text-white">
+            Các bước thực hiện
+          </label>
           {fields.map((step, index) => (
             <div key={step.id} className="flex items-center space-x-2 mb-2">
               <div className="w-full">
-                <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold m-2">Bước {index + 1}</label>
+                <label className="block text-gray-700 dark:text-white sm:text-sm text-[14px] font-bold m-2">
+                  Bước {index + 1}
+                </label>
                 <textarea
                   className="w-full h-[80px] p-2 border rounded sm:text-sm text-[14px]"
                   placeholder={`Nhập bước thực hiện ${index + 1}`}
@@ -304,7 +381,9 @@ const AddService: React.FC = () => {
           <button
             type="button"
             className="bg-blue-500 text-white px-4 py-2 rounded sm:text-sm text-[14px]"
-            onClick={() => append({ stepOrder: fields.length + 1, description: "" })}
+            onClick={() =>
+              append({ stepOrder: fields.length + 1, description: "" })
+            }
           >
             + Thêm Bước
           </button>
@@ -312,11 +391,18 @@ const AddService: React.FC = () => {
         <div className="w-full flex items-center justify-center">
           <button
             type="submit"
-            className={`sm:w-[40%] w-full sm:text-sm text-[14px] ${isLoading ? "bg-gray-400 flex items-center justify-center" : "bg-blue-500 hover:bg-blue-600"
-              } text-white p-3 rounded-md transition duration-200`}
+            className={`sm:w-[40%] w-full sm:text-sm text-[14px] ${
+              isLoading
+                ? "bg-gray-400 flex items-center justify-center"
+                : "bg-blue-500 hover:bg-blue-600"
+            } text-white p-3 rounded-md transition duration-200`}
             disabled={isLoading}
           >
-            {isLoading ? <LoaderCircleIcon className="animate-spin" /> : "Thêm Dịch Vụ"}
+            {isLoading ? (
+              <LoaderCircleIcon className="animate-spin" />
+            ) : (
+              "Thêm Dịch Vụ"
+            )}
           </button>
         </div>
       </form>

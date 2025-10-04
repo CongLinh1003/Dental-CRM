@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/AuthContext";
-import { motion } from 'framer-motion'
-import { Eye, EyeOff,  LoaderCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import axios from "axios";
@@ -24,7 +24,7 @@ const LoginForm: React.FC = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
     // Xử lý riêng cho password
-    if (name === 'password') {
+    if (name === "password") {
       const errorMessage = validateField(name, value);
       setErrors((prevErrors) => ({
         ...prevErrors,
@@ -51,7 +51,6 @@ const LoginForm: React.FC = () => {
       login(response.data.user);
       navigation("/");
     } catch (error: unknown) {
-
       if (axios.isAxiosError(error)) {
         const errorMessage = error.response?.data?.message || error.message;
         if (errorMessage === "Blocked") {
@@ -71,20 +70,24 @@ const LoginForm: React.FC = () => {
     }
   };
 
-
   // --- Hàm kiểm tra validation cho một trường cụ thể ---
   const validateField = useCallback((name: string, value: string): string => {
     const trimmedValue = value.trim();
 
     switch (name) {
-      case 'email':
+      case "email":
         if (!trimmedValue) return "Vui lòng nhập email.";
         // Regex email cơ bản
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue)) return "Email không hợp lệ.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue))
+          return "Email không hợp lệ.";
         return "";
-      case 'password':
+      case "password":
         if (!trimmedValue) return "Vui lòng nhập mật khẩu.";
-        if (!/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/.test(trimmedValue)) {
+        if (
+          !/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/.test(
+            trimmedValue
+          )
+        ) {
           return "Mật khẩu phải có ít nhất 8 ký tự, chứa ít nhất một chữ hoa và một ký tự đặc biệt.";
         }
         return "";
@@ -94,9 +97,13 @@ const LoginForm: React.FC = () => {
   }, []);
 
   // --- Xử lý khi một trường mất focus (onBlur) ---
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleBlur = (
+    e: React.FocusEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value } = e.target;
-    if (['email', 'password'].includes(name)) {
+    if (["email", "password"].includes(name)) {
       const errorMessage = validateField(name, value);
       setErrors((prevErrors) => ({
         ...prevErrors,
@@ -111,9 +118,9 @@ const LoginForm: React.FC = () => {
     let isValid = true;
 
     // Danh sách các trường cần kiểm tra (có thể bỏ password nếu chấp nhận mặc định)
-    const fieldsToValidate: (keyof typeof formData)[] = ['email', 'password'];
+    const fieldsToValidate: (keyof typeof formData)[] = ["email", "password"];
 
-    fieldsToValidate.forEach(field => {
+    fieldsToValidate.forEach((field) => {
       const value = formData[field];
       const errorMessage = validateField(field, value);
       if (errorMessage) {
@@ -126,14 +133,15 @@ const LoginForm: React.FC = () => {
     return isValid;
   };
 
-
-
   return (
     <div className="overflow-hidden">
       <div className="relative w-full min-h-screen px-4 sm:px-8 lg:px-16 flex flex-col sm:flex-row items-center justify-center bg-gradient-to-br from-purple-900 via-purple-700 to-black">
         <ToastContainer />
         <div className="absolute top-10 left-5">
-          <a className="text-white hover:underline cursor-pointer" onClick={() => navigation(-1)}>
+          <a
+            className="text-white hover:underline cursor-pointer"
+            onClick={() => navigation(-1)}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-8 w-8 text-white"
@@ -141,7 +149,12 @@ const LoginForm: React.FC = () => {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </a>
         </div>
@@ -152,7 +165,9 @@ const LoginForm: React.FC = () => {
 
           {/* Nội dung chào mừng */}
           <div className="text-center text-white mb-10">
-            <h1 className="sm:text-[30px] text-[20px] font-bold tracking-wider">Nha khoa Hoàng Bình CRM 🍃</h1>
+            <h1 className="sm:text-[30px] text-[20px] font-bold tracking-wider">
+              Nha khoa Hoàng Bình CRM 🦷
+            </h1>
           </div>
         </div>
 
@@ -160,14 +175,16 @@ const LoginForm: React.FC = () => {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="w-full max-w-md bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-xl text-white border border-white/20">
+          className="w-full max-w-md bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-xl text-white border border-white/20"
+        >
           <h2 className="sm:text-2xl text-lg font-bold text-center text-gray-800 mb-4">
             Welcome Back !
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="text-sm">
               <input
-                name="email" type="email"
+                name="email"
+                type="email"
                 placeholder="Email"
                 onChange={handleChange}
                 onBlur={handleBlur}
@@ -193,7 +210,9 @@ const LoginForm: React.FC = () => {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </>
-              {errors.password && <p className="text-red-500">{errors.password}</p>}
+              {errors.password && (
+                <p className="text-red-500">{errors.password}</p>
+              )}
             </div>
 
             <div className="flex items-center justify-between text-sm">
@@ -207,12 +226,17 @@ const LoginForm: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-2 font-medium rounded-md transition text-sm duration-300 flex items-center justify-center ${isLoading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
-                }`}
+              className={`w-full py-2 font-medium rounded-md transition text-sm duration-300 flex items-center justify-center ${
+                isLoading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-500 hover:bg-blue-600 text-white"
+              }`}
             >
-              {isLoading ? <LoaderCircle className="animate-spin text-center"/> : "Đăng nhập"}
+              {isLoading ? (
+                <LoaderCircle className="animate-spin text-center" />
+              ) : (
+                "Đăng nhập"
+              )}
             </button>
           </form>
 
@@ -225,13 +249,10 @@ const LoginForm: React.FC = () => {
             >
               Đăng ký tài khoản
             </button>
-
-           
           </div>
         </motion.div>
       </div>
     </div>
-
   );
 };
 

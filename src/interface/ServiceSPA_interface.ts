@@ -22,7 +22,7 @@ export interface CategoryForm {
   categoryName: string;
 }
 
-export interface ServiceSPAForm {
+export interface ServiceDentalForm {
   name: string;
   description: string;
   price: number;
@@ -33,15 +33,15 @@ export interface ServiceSPAForm {
   steps: Step[];
 }
 
-export interface ServiceSPAFormUpdate {
-    name: string;
-    description: string;
-    price: number;
-    duration: number;
-    categoryId: number;
-    serviceType: string;
-    steps: StepFull[];
-    images: string[];
+export interface ServiceDentalFormUpdate {
+  name: string;
+  description: string;
+  price: number;
+  duration: number;
+  categoryId: number;
+  serviceType: string;
+  steps: StepFull[];
+  images: string[];
 }
 
 export interface ServiceFull {

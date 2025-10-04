@@ -7,11 +7,10 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { registerStaff, verifyOtp } from "../../service/apiAuth";
 
-
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const STAFF = import.meta.env.VITE_CLOUDINARY_UPLOAD_STAFF;
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
 const RegisterForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -19,8 +18,7 @@ const RegisterForm: React.FC = () => {
     email: "",
     phone: "",
     password: "",
-    imageUrl: "",// Lưu avatar dưới dạng URL từ Cloudinary
-
+    imageUrl: "", // Lưu avatar dưới dạng URL từ Cloudinary
   });
   const [message, setMessage] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +31,11 @@ const RegisterForm: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const navigation = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -58,23 +60,30 @@ const RegisterForm: React.FC = () => {
     const trimmedValue = value.trim();
 
     switch (name) {
-      case 'name':
+      case "name":
         if (!trimmedValue) return "Vui lòng nhập họ và tên.";
-        if (!/^[a-zA-Z\u00C0-\u1FFF\s]+$/.test(trimmedValue)) return "Họ và tên chỉ được chứa chữ cái và khoảng trắng.";
+        if (!/^[a-zA-Z\u00C0-\u1FFF\s]+$/.test(trimmedValue))
+          return "Họ và tên chỉ được chứa chữ cái và khoảng trắng.";
         return "";
-      case 'email':
+      case "email":
         if (!trimmedValue) return "Vui lòng nhập email.";
         // Regex email cơ bản
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue)) return "Email không hợp lệ.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedValue))
+          return "Email không hợp lệ.";
         return "";
-      case 'phone':
+      case "phone":
         if (!trimmedValue) return "Vui lòng nhập số điện thoại.";
         // Bắt đầu bằng 0, 10 chữ số
-        if (!/^0\d{9}$/.test(trimmedValue)) return "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.";
+        if (!/^0\d{9}$/.test(trimmedValue))
+          return "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số.";
         return "";
-      case 'password':
+      case "password":
         if (!trimmedValue) return "Vui lòng nhập mật khẩu.";
-        if (!/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/.test(trimmedValue)) {
+        if (
+          !/^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/.test(
+            trimmedValue
+          )
+        ) {
           return "Mật khẩu phải có ít nhất 8 ký tự, chứa ít nhất một chữ hoa và một ký tự đặc biệt.";
         }
         return "";
@@ -84,9 +93,13 @@ const RegisterForm: React.FC = () => {
   }, []);
 
   // --- Xử lý khi một trường mất focus (onBlur) ---
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleBlur = (
+    e: React.FocusEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value } = e.target;
-    if (['name', 'email', 'phone', 'address', 'description'].includes(name)) {
+    if (["name", "email", "phone", "address", "description"].includes(name)) {
       const errorMessage = validateField(name, value);
       setErrors((prevErrors) => ({
         ...prevErrors,
@@ -94,7 +107,7 @@ const RegisterForm: React.FC = () => {
       }));
     }
     // Xử lý riêng cho password
-    if (name === 'password') {
+    if (name === "password") {
       const errorMessage = validateField(name, value);
       setErrors((prevErrors) => ({
         ...prevErrors,
@@ -109,9 +122,13 @@ const RegisterForm: React.FC = () => {
     let isValid = true;
 
     // Danh sách các trường cần kiểm tra (có thể bỏ password nếu chấp nhận mặc định)
-    const fieldsToValidate: (keyof typeof formData)[] = ['name', 'email', 'phone'];
+    const fieldsToValidate: (keyof typeof formData)[] = [
+      "name",
+      "email",
+      "phone",
+    ];
 
-    fieldsToValidate.forEach(field => {
+    fieldsToValidate.forEach((field) => {
       const value = formData[field];
       const errorMessage = validateField(field, value);
       if (errorMessage) {
@@ -156,7 +173,9 @@ const RegisterForm: React.FC = () => {
       setMessage(
         "Ảnh đã được chọn. Ảnh sẽ được tải lên khi bạn nhấn 'Đăng ký'."
       );
-      toast.success("Ảnh đã được chọn. Ảnh sẽ được tải lên khi bạn nhấn 'Đăng ký'.");
+      toast.success(
+        "Ảnh đã được chọn. Ảnh sẽ được tải lên khi bạn nhấn 'Đăng ký'."
+      );
     }
   };
 
@@ -178,10 +197,7 @@ const RegisterForm: React.FC = () => {
         uploadFormData.append("file", imageFile);
         uploadFormData.append(UPLOAD_PRESET, STAFF);
 
-        const response = await axios.post(
-          CLOUDINARY_URL,
-          uploadFormData
-        );
+        const response = await axios.post(CLOUDINARY_URL, uploadFormData);
         imageUrl = response.data.secure_url; // Lấy URL ảnh
       }
 
@@ -195,23 +211,23 @@ const RegisterForm: React.FC = () => {
       setMessage("OTP đã được gửi đến email của bạn.");
       toast.success("OTP đã được gửi đến email của bạn.");
       setIsOtpSent(true); // OTP đã được gửi
-
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         // Kiểm tra nếu API trả về mã lỗi 1000
         if (error.response?.data?.code === 1011) {
-          toast.warning("Email đã tồn tại")
+          toast.warning("Email đã tồn tại");
           setIsOtpSent(false);
         } else {
           // Xử lý lỗi chung từ API
-          setMessage(`Lỗi: ${error.response?.data?.message || "Có lỗi xảy ra."}`);
+          setMessage(
+            `Lỗi: ${error.response?.data?.message || "Có lỗi xảy ra."}`
+          );
         }
       } else {
         // Xử lý lỗi không xác định
         setMessage("Đã xảy ra lỗi không xác định.");
       }
-    }
-    finally {
+    } finally {
       setIsLoading(false);
     }
   };
@@ -226,22 +242,22 @@ const RegisterForm: React.FC = () => {
       //   })
       // );
 
-      const response = await verifyOtp(
-        {
-          email: formData.email,
-          otp: otp,
-        }
-      );
+      const response = await verifyOtp({
+        email: formData.email,
+        otp: otp,
+      });
 
       if (response.data.message === "OTP verified successfully") {
         setIsOtpVerified(true);
         setMessage(
           "OTP đã được xác thực thành công. Bạn có thể hoàn tất đăng ký."
         );
-        toast.success("OTP đã được xác thực thành công. Bạn có thể hoàn tất đăng ký.");
+        toast.success(
+          "OTP đã được xác thực thành công. Bạn có thể hoàn tất đăng ký."
+        );
         setTimeout(() => {
-           navigation("/login");
-        }, 2000);     
+          navigation("/login");
+        }, 2000);
       } else {
         setMessage("OTP không hợp lệ hoặc đã hết hạn.");
         toast.error("OTP không hợp lệ hoặc đã hết hạn.");
@@ -261,7 +277,10 @@ const RegisterForm: React.FC = () => {
 
       {/* Nút quay lại */}
       <div className="absolute top-10 left-5">
-        <a className="text-white hover:underline cursor-pointer" onClick={() => navigation(-1)}>
+        <a
+          className="text-white hover:underline cursor-pointer"
+          onClick={() => navigation(-1)}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-8 w-8 text-white"
@@ -269,7 +288,12 @@ const RegisterForm: React.FC = () => {
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </a>
       </div>
@@ -283,15 +307,26 @@ const RegisterForm: React.FC = () => {
       >
         {/* Nội dung chào mừng */}
         <div className="hidden sm:flex flex-col  justify-center md:mr-10 text-center md:text-left">
-          <p className="text-3xl sm:text-[30px] font-bold tracking-wider">Chào mừng đến với Nha Khoa Hoàng Bình CRM 🍃</p>
-          <p className="text-sm sm:text-lg text-justify text-gray-300 mt-2">Nơi thư giãn tuyệt đối với liệu pháp chăm sóc tự nhiên.</p>
+          <p className="text-3xl sm:text-[30px] font-bold tracking-wider">
+            Chào mừng đến với Nha Khoa Hoàng Bình CRM 🦷
+          </p>
+          <p className="text-sm sm:text-lg text-justify text-gray-300 mt-2">
+            Nơi Bạn và Gia đình đặt trọn nụ cười.
+          </p>
         </div>
 
         {/* Form đăng ký */}
-        <form onSubmit={handleSubmit} className="w-full max-w-md sm:bg-white/10 sm:backdrop-blur-lg p-6 sm:p-8 rounded-2xl shadow-xl text-white sm:border  sm:border-white/20 mt-6 md:mt-0">
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-md sm:bg-white/10 sm:backdrop-blur-lg p-6 sm:p-8 rounded-2xl shadow-xl text-white sm:border  sm:border-white/20 mt-6 md:mt-0"
+        >
           <div className="mb-6 text-center">
-            <p className="text-lg sm:text-[30px[ font-medium">Đăng ký tài khoản</p>
-            <p className="text-gray-200 text-sm">Vui lòng điền thông tin để đăng ký tài khoản.</p>
+            <p className="text-lg sm:text-[30px[ font-medium">
+              Đăng ký tài khoản
+            </p>
+            <p className="text-gray-200 text-sm">
+              Vui lòng điền thông tin để đăng ký tài khoản.
+            </p>
           </div>
 
           {!isOtpSent ? (
@@ -305,17 +340,34 @@ const RegisterForm: React.FC = () => {
                   {!imagePreview ? (
                     <>
                       <CloudUpload className="text-gray-300" fontSize="large" />
-                      <p className="text-xs text-gray-200 mt-1">Nhấn để tải ảnh</p>
+                      <p className="text-xs text-gray-200 mt-1">
+                        Nhấn để tải ảnh
+                      </p>
                     </>
                   ) : (
-                    <img src={imagePreview} alt="Xem trước" className="w-full h-full object-cover rounded-full" />
+                    <img
+                      src={imagePreview}
+                      alt="Xem trước"
+                      className="w-full h-full object-cover rounded-full"
+                    />
                   )}
-                  <input id="file-upload" type="file" name="avatar" onChange={handleFileChange} accept="image/*" className="hidden" />
+                  <input
+                    id="file-upload"
+                    type="file"
+                    name="avatar"
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
                 </label>
               </div>
 
               {/* Hiển thị lỗi nếu có */}
-              {message && <p className="mt-4 mb-4 text-center text-red-300 text-sm">{message}</p>}
+              {message && (
+                <p className="mt-4 mb-4 text-center text-red-300 text-sm">
+                  {message}
+                </p>
+              )}
 
               {/* Email */}
               <div className="mb-4 text-sm">
@@ -328,7 +380,9 @@ const RegisterForm: React.FC = () => {
                   className="w-full p-3 bg-white text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
-                {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+                {errors.email && (
+                  <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+                )}
               </div>
 
               {/* Name & Phone */}
@@ -342,7 +396,9 @@ const RegisterForm: React.FC = () => {
                     className="w-full p-3 bg-white text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
-                  {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
+                  {errors.name && (
+                    <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+                  )}
                 </div>
 
                 <div className="w-full sm:w-1/2">
@@ -355,9 +411,10 @@ const RegisterForm: React.FC = () => {
                     className="w-full p-3 bg-white text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
-                  {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
+                  {errors.phone && (
+                    <p className="mt-1 text-xs text-red-500">{errors.phone}</p>
+                  )}
                 </div>
-
               </div>
 
               {/* Password */}
@@ -381,7 +438,9 @@ const RegisterForm: React.FC = () => {
                   </button>
                 </div>
 
-                {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+                {errors.password && (
+                  <p className="mt-1 text-xs text-red-500">{errors.password}</p>
+                )}
               </div>
 
               {/* Nút đăng ký */}
@@ -416,17 +475,15 @@ const RegisterForm: React.FC = () => {
             </>
           ) : (
             <div className="text-center mt-4">
-              <p className="text-green-500">Đăng ký hoàn tất! Bạn đã được đăng ký.</p>
+              <p className="text-green-500">
+                Đăng ký hoàn tất! Bạn đã được đăng ký.
+              </p>
             </div>
           )}
-
         </form>
       </motion.div>
     </div>
-
   );
 };
 
 export default RegisterForm;
-
-

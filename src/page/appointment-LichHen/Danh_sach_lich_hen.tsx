@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { deleteAppointment, exportAppointmentToExcel, getAppointmentAll, updateStatusPaid } from "../../service/apiAppoinment";
-import { AppointmentResponse } from '../../interface/Appointment_interface';
-import { motion } from 'framer-motion'
+import {
+  deleteAppointment,
+  exportAppointmentToExcel,
+  getAppointmentAll,
+  updateStatusPaid,
+} from "../../service/apiAppoinment";
+import { AppointmentResponse } from "../../interface/Appointment_interface";
+import { motion } from "framer-motion";
 import AppointmentDetailModal from "./AppointmentDetailModal";
 import { toast, ToastContainer } from "react-toastify";
 import AppointmentList from "../../components/appointment/AppointmentList";
@@ -10,8 +15,6 @@ import AnonymousAppointmentList from "../../components/appointment/AnonymousAppo
 import PaymentModal from "../Payment/PaymentModal";
 import { FaFileExcel, FaLeaf } from "react-icons/fa";
 
-
-
 const pageSize = 8;
 const NEW_THRESHOLD_SECONDS = 300;
 const AUTO_REFRESH_INTERVAL = 30000;
@@ -19,7 +22,8 @@ const AUTO_REFRESH_INTERVAL = 30000;
 const AppoinmentList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [appointment, setAppointment] = useState<AppointmentResponse[]>([]);
-  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentResponse | null>(null);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<AppointmentResponse | null>(null);
   const [openModal, setOpenModal] = useState(false);
   const [openPaymentModal, setopenPaymentModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,18 +33,33 @@ const AppoinmentList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [statusFilterAmonyus, setStatusFilterAmonyus] = useState("");
 
-  const statusMap: Record<
-    string,
-    { label: string; color: string }
-  > = {
-    SCHEDULED: { label: "Đã đặt lịch", color: "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white  rounded-full bg-blue-600/70" },
-    COMPLETED: { label: "Hoàn thành", color: "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-green-600/70" },
-    CANCELLED: { label: "Đã hủy", color: "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-red-500/70" },
-    PENDING: { label: "Chờ xác nhận", color: "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-yellow-500/70" },
-    PAID: { label: "Đã thanh toán", color: 'sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-green-600/70' }
+  const statusMap: Record<string, { label: string; color: string }> = {
+    SCHEDULED: {
+      label: "Đã đặt lịch",
+      color:
+        "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white  rounded-full bg-blue-600/70",
+    },
+    COMPLETED: {
+      label: "Hoàn thành",
+      color:
+        "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-green-600/70",
+    },
+    CANCELLED: {
+      label: "Đã hủy",
+      color:
+        "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-red-500/70",
+    },
+    PENDING: {
+      label: "Chờ xác nhận",
+      color:
+        "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-yellow-500/70",
+    },
+    PAID: {
+      label: "Đã thanh toán",
+      color:
+        "sm:px-2 px-1 py-1 sm:text-sm text-[10px] text-white rounded-full bg-green-600/70",
+    },
   };
-
-
 
   useEffect(() => {
     setLoading(true);
@@ -51,28 +70,34 @@ const AppoinmentList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-
   }, []);
 
   useEffect(() => {
     const intervalId = setInterval(fetchAppointment, AUTO_REFRESH_INTERVAL);
     return () => clearInterval(intervalId);
-  }, [])
+  }, []);
 
   const fetchAppointment = async () => {
     try {
       const response = await getAppointmentAll();
       const now = Date.now();
-      const sortedAppointments = response.sort((a: { createdAt: string }, b: { createdAt: string }) => {
-        const dateA = new Date(a.createdAt);
-        const dateB = new Date(b.createdAt);
-        return dateB.getTime() - dateA.getTime();
-      });
-      setAppointment(sortedAppointments.map((appt: AppointmentResponse & { isNew?: boolean }) => ({
-        ...appt,
-        isNew: (now - new Date(appt.createdAt).getTime()) / 2000 < NEW_THRESHOLD_SECONDS,
-      })));
-
+      const sortedAppointments = response.sort(
+        (a: { createdAt: string }, b: { createdAt: string }) => {
+          const dateA = new Date(a.createdAt);
+          const dateB = new Date(b.createdAt);
+          return dateB.getTime() - dateA.getTime();
+        }
+      );
+      setAppointment(
+        sortedAppointments.map(
+          (appt: AppointmentResponse & { isNew?: boolean }) => ({
+            ...appt,
+            isNew:
+              (now - new Date(appt.createdAt).getTime()) / 2000 <
+              NEW_THRESHOLD_SECONDS,
+          })
+        )
+      );
     } catch (error) {
       console.error("Không thể lấy danh sách lịch hẹn:", error);
     }
@@ -86,12 +111,11 @@ const AppoinmentList: React.FC = () => {
   });
 
   const fillteredAppointmentAmonyus = appointment.filter((apt) => {
-    return (apt.gustName?.toLowerCase().includes(searchItemAmonyus.toLowerCase())
-      &&
+    return (
+      apt.gustName?.toLowerCase().includes(searchItemAmonyus.toLowerCase()) &&
       (statusFilterAmonyus === "" || apt.status === statusFilterAmonyus)
-    )
+    );
   });
-
 
   // const paginatedAppointment = filteredAppointment.slice(
   //   (currentPage - 1) * pageSize,
@@ -107,10 +131,12 @@ const AppoinmentList: React.FC = () => {
     setCurrentPage(value);
   };
 
-  const handlePageChangeAmonyus = (_: React.ChangeEvent<unknown>, value: number) => {
+  const handlePageChangeAmonyus = (
+    _: React.ChangeEvent<unknown>,
+    value: number
+  ) => {
     setCurrentPageAmonyus(value);
   };
-
 
   // Xem chi tiết
   const handleOpenModal = (appointment: AppointmentResponse) => {
@@ -134,61 +160,64 @@ const AppoinmentList: React.FC = () => {
     setSelectedAppointment(null);
   };
 
-
   const handleDeleted = async (id: number) => {
-    if (!window.confirm('Bạn có chắc muốn xóa lịch hẹn này ?')) return;
+    if (!window.confirm("Bạn có chắc muốn xóa lịch hẹn này ?")) return;
 
     try {
-      await deleteAppointment(id)
-      toast.success(`Xóa dịch vụ thành công`)
+      await deleteAppointment(id);
+      toast.success(`Xóa dịch vụ thành công`);
       fetchAppointment();
     } catch (error) {
       console.error(`Lỗi kích hoạt dịch vụ`, error);
-      toast.error("Xác nhận thất bại")
+      toast.error("Xác nhận thất bại");
     }
-  }
+  };
 
-  const handleUpdateAppointmentPaidStatus = async (id: number, name: string) => {
-    if (!window.confirm('Bạn có chắc muốn xác nhận thanh toán lịch hẹn này ?')) return;
+  const handleUpdateAppointmentPaidStatus = async (
+    id: number,
+    name: string
+  ) => {
+    if (!window.confirm("Bạn có chắc muốn xác nhận thanh toán lịch hẹn này ?"))
+      return;
 
     try {
-      await updateStatusPaid(id)
-      toast.success(`Xác nhận thanh toán lịch hẹn ${name} thành công`)
+      await updateStatusPaid(id);
+      toast.success(`Xác nhận thanh toán lịch hẹn ${name} thành công`);
       fetchAppointment();
     } catch (error) {
       console.error(`Lỗi kích hoạt dịch vụ`, error);
-      toast.error("Xác nhận thất bại")
+      toast.error("Xác nhận thất bại");
     }
-  }
+  };
 
   // Xuất excel lịch hẹn
   const exportExcel = async () => {
     try {
       await exportAppointmentToExcel();
     } catch (error: unknown) {
-      console.log('====================================');
+      console.log("====================================");
       console.log("Lỗi khi xuat excel", error);
-      console.log('====================================');
+      console.log("====================================");
     }
-  }
-
+  };
 
   if (loading) {
-    return <div className="flex flex-col items-center justify-center h-[70vh] gap-y-4">
-      <div className="relative h-[100px] w-[100px]">
-        <div className="animate-spin rounded-full h-[90px] w-[90px] border-t-2 border-l-2 border-teal-400 absolute"></div>
-        <div className="animate-spin rounded-full h-[80px] w-[80px] border-t-2 border-r-2 border-purple-400 absolute top-1 left-1"></div>
-        <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-green-400 absolute top-2 left-2"></div>
-        <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-blue-400 absolute top-2 left-2"></div>
-        <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-red-400 absolute top-2 left-2"></div>
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] gap-y-4">
+        <div className="relative h-[100px] w-[100px]">
+          <div className="animate-spin rounded-full h-[90px] w-[90px] border-t-2 border-l-2 border-teal-400 absolute"></div>
+          <div className="animate-spin rounded-full h-[80px] w-[80px] border-t-2 border-r-2 border-purple-400 absolute top-1 left-1"></div>
+          <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-green-400 absolute top-2 left-2"></div>
+          <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-blue-400 absolute top-2 left-2"></div>
+          <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-red-400 absolute top-2 left-2"></div>
+        </div>
+        <div className="flex items-center">
+          <FaLeaf className="animate-bounce text-green-400 text-xl mr-2" />
+          <span className="text-gray-600 text-sm">Đang tải dữ liệu...</span>
+        </div>
       </div>
-      <div className="flex items-center">
-        <FaLeaf className="animate-bounce text-green-400 text-xl mr-2" />
-        <span className="text-gray-600 text-sm">Đang thư giãn và tải dữ liệu...</span>
-      </div>
-    </div>;
+    );
   }
-
 
   return (
     <motion.div
@@ -198,9 +227,12 @@ const AppoinmentList: React.FC = () => {
       className="sm:p-4 sm:mb-6 mb-20 sm:mt-0 mt-10 dark:text-black"
     >
       <ToastContainer />
-      <h2 className="sm:text-2xl text-lg font-bold mb-4 dark:text-white">Danh sách lịch hẹn 🍃</h2>
+      <h2 className="sm:text-2xl text-lg font-bold mb-4 dark:text-white">
+        Danh sách lịch hẹn 🦷
+      </h2>
       <div className="flex items-center justify-end mb-3">
-        <button className="flex items-center justify-center sm:gap-2 gap-1 bg-green-500 hover:bg-green-600 text-white sm:p-2 p-1 rounded-lg sm:w-[150px] w-[120px]"
+        <button
+          className="flex items-center justify-center sm:gap-2 gap-1 bg-green-500 hover:bg-green-600 text-white sm:p-2 p-1 rounded-lg sm:w-[150px] w-[120px]"
           onClick={exportExcel}
         >
           <FaFileExcel size={20} /> Xuất excel
@@ -268,7 +300,6 @@ const AppoinmentList: React.FC = () => {
         onUpdateSuccess={fetchAppointment}
         handleUpdateAppointmentPaidStatus={handleUpdateAppointmentPaidStatus}
       />
-
     </motion.div>
   );
 };
