@@ -1,798 +1,395 @@
-import "react-toastify/dist/ReactToastify.css";
-import axios from "axios";
-import { motion } from "framer-motion";
-import { Ban, Edit3, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
-import {
-  ContentPasteOffOutlined,
-  ContentPasteOutlined,
-} from "@mui/icons-material";
-import { Pagination } from "@mui/material"; // Import Pagination từ Material UI
-import {
-  activeCus,
-  deactiveCus,
-  deleteCustomer,
-  updateCustomer,
-  blockCustomer,
-} from "../../service/apiCustomer";
-import { CustomerDataFull } from "../../interface/CustomerData_interface";
-import RenderNotFound from "../../components/notFound/renderNotFound";
-// import { FaFileExcel } from 'react-icons/fa';
-import { useAuth } from "../../hooks/AuthContext";
-import { getAuthStaff } from "../../service/apiStaff";
-import CHangePassword_Profile from "../../components/profile/ChangePassword_Profile";
-import { ChangePasswordData } from "../../interface/ChangePassword_interface";
-import { changePassword } from "../../service/apiAuth";
-import { FaLeaf } from "react-icons/fa";
+import "react-toastify/dist/ReactToastify.css";
+import { Edit3, Trash2, Ban, UserX } from "lucide-react";
+import { FaFileCsv, FaLock } from "react-icons/fa";
 
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-const STAFF = import.meta.env.VITE_CLOUDINARY_UPLOAD_STAFF;
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+/**
+ * StaffAccountsAdmin.tsx
+ * - TailwindCSS-only UI
+ * - Fully self-contained admin UI to manage staff/customer accounts
+ * - Mock data by default; easy to plug-in real API functions
+ *
+ * Features:
+ * - Card / Table view toggle
+ * - Search, status filter, role filter
+ * - Column show/hide (persist to localStorage)
+ * - Pagination (client-side)
+ * - Inline edit modal (with validation)
+ * - Upload avatar (preview, stub upload)
+ * - Activate / Deactivate / Block / Unblock / Delete
+ * - Bulk actions (select multiple -> export / block / delete)
+ * - Export CSV (visible cols or selected rows)
+ * - Role-based admin controls (isAdmin variable)
+ */
 
-const pageSize = 10;
+// ---------------- Types ----------------
+type AccountStatus = "ACTIVATE" | "DEACTIVATED" | "BLOCKED";
 
-// ---------------- Mock Data (Fallback when backend not ready) ----------------
-// NOTE: Không chỉnh sửa service layer. Chỉ dùng ở component này khi gọi API thất bại hoặc backend chưa sẵn sàng.
-interface MockPosition {
-  positionId: number;
-  positionName: string;
-}
-interface MockEmployee {
-  staffId: number;
+type Role = "admin" | "staff" | "user";
+
+type Account = {
+  id: number;
   name: string;
   email: string;
-  phone: string;
-  address: string;
-  position: MockPosition;
-  status: string;
-  startDate: string;
-  imageUrl: string;
+  phone?: string;
+  address?: string;
+  role: Role;
+  status: AccountStatus;
+  createdAt: string; // ISO
+  avatar?: string;
+};
+
+// Loại bỏ 'any' bằng cách định nghĩa các kiểu cụ thể
+type EditableAccount = Omit<Account, "id" | "createdAt" | "status" | "role"> & {
+  id: number;
+  _file?: File;
+  name: string;
+  email: string;
+};
+
+type EditingErrors = {
+  [K in keyof EditableAccount]?: string;
+};
+
+// ---------------- Config ----------------
+const PAGE_SIZE = 8;
+
+const MOCK_ACCOUNTS: Account[] = Array.from({ length: 23 }).map((_, i) => ({
+  id: i + 1,
+  name: ["An", "Bình", "Cường", "Dũng", "Em", "Hân"][i % 6] + " " + (i + 1),
+  email: `user${i + 1}@example.com`,
+  phone: `0${(900000000 + i).toString().slice(1)}`,
+  address: `Đường ${i + 1}, Quận ${(i % 10) + 1}`,
+  role: i % 7 === 0 ? "admin" : i % 3 === 0 ? "staff" : "user",
+  status: i % 11 === 0 ? "BLOCKED" : i % 5 === 0 ? "DEACTIVATED" : "ACTIVATE",
+  createdAt: new Date(Date.now() - i * 86400000).toISOString(),
+  avatar: `https://i.pravatar.cc/150?img=${(i % 70) + 1}`,
+}));
+
+// ---------------- Helpers ----------------
+function downloadCSV(rows: Record<string, unknown>[], filename = "export.csv") {
+  if (!rows.length) {
+    toast.info("Không có dữ liệu để xuất.");
+    return;
+  }
+  const keys = Object.keys(rows[0]);
+  const csv = [keys.join(","), ...rows.map(r => keys.map(k => `"${String(r[k] ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
-const mockEmployees: MockEmployee[] = [
-  {
-    staffId: 1,
-    name: "Trần Văn An",
-    email: "an.tran@gmail.com",
-    phone: "0901234567",
-    address: "123 Đường Nguyễn Trãi, Q.5, TP.HCM",
-    position: { positionId: 1, positionName: "Quản lý" },
-    status: "ACTIVATE",
-    startDate: "2020-01-15",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/an.jpg",
-  },
-  {
-    staffId: 2,
-    name: "Lê Thị Bình",
-    email: "binh.le@gmail.com",
-    phone: "0912345678",
-    address: "456 Đường Lê Lợi, Q.1, TP.HCM",
-    position: { positionId: 2, positionName: "Nha sĩ" },
-    status: "ACTIVATE",
-    startDate: "2019-05-20",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/binh.jpg",
-  },
-  {
-    staffId: 3,
-    name: "Nguyễn Văn Cường",
-    email: "cuong.nguyen@gmail.com",
-    phone: "0987654321",
-    address: "789 Đường Hai Bà Trưng, Q.3, TP.HCM",
-    position: { positionId: 2, positionName: "Nha sĩ" },
-    status: "ACTIVATE",
-    startDate: "2021-02-10",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/cuong.jpg",
-  },
-  {
-    staffId: 4,
-    name: "Phạm Thu Dung",
-    email: "dung.pham@gmail.com",
-    phone: "0978123456",
-    address: "101 Đường Trần Hưng Đạo, Q.1, TP.HCM",
-    position: { positionId: 3, positionName: "Kỹ thuật viên" },
-    status: "DEACTIVATED",
-    startDate: "2022-08-01",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/dung.jpg",
-  },
-  {
-    staffId: 5,
-    name: "Hoàng Minh Hải",
-    email: "hai.hoang@gmail.com",
-    phone: "0945678910",
-    address: "22B Đường Thống Nhất, Q. Gò Vấp, TP.HCM",
-    position: { positionId: 2, positionName: "Nha sĩ" },
-    status: "ACTIVATE",
-    startDate: "2020-11-25",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/hai.jpg",
-  },
-  {
-    staffId: 6,
-    name: "Đặng Ngọc Hân",
-    email: "han.dang@gmail.com",
-    phone: "0934567890",
-    address: "33C Đường Nguyễn Đình Chiểu, Q.3, TP.HCM",
-    position: { positionId: 4, positionName: "Tiếp tân" },
-    status: "ACTIVATE",
-    startDate: "2023-03-10",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/han.jpg",
-  },
-  {
-    staffId: 7,
-    name: "Võ Văn Hùng",
-    email: "hung.vo@gmail.com",
-    phone: "0967890123",
-    address: "55A Đường Phan Đình Phùng, Q. Phú Nhuận, TP.HCM",
-    position: { positionId: 2, positionName: "Nha sĩ" },
-    status: "DEACTIVATED",
-    startDate: "2018-09-05",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/hung.jpg",
-  },
-  {
-    staffId: 8,
-    name: "Trần Thanh Long",
-    email: "long.tran@gmail.com",
-    phone: "0923456789",
-    address: "88 Đường Hồ Xuân Hương, Q.3, TP.HCM",
-    position: { positionId: 3, positionName: "Kỹ thuật viên" },
-    status: "ACTIVATE",
-    startDate: "2022-01-30",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/long.jpg",
-  },
-  {
-    staffId: 9,
-    name: "Mai Lan Hương",
-    email: "huong.mai@gmail.com",
-    phone: "0956123789",
-    address: "15 Tôn Thất Thiệp, Q.1, TP.HCM",
-    position: { positionId: 2, positionName: "Nha sĩ" },
-    status: "ACTIVATE",
-    startDate: "2021-07-12",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/huong.jpg",
-  },
-  {
-    staffId: 10,
-    name: "Bùi Anh Tuấn",
-    email: "tuan.bui@gmail.com",
-    phone: "0909999888",
-    address: "44 Nguyễn Văn Cừ, Q.5, TP.HCM",
-    position: { positionId: 4, positionName: "Tiếp tân" },
-    status: "ACTIVATE",
-    startDate: "2023-05-01",
-    imageUrl:
-      "https://res.cloudinary.com/your-cloud-name/image/upload/v123456789/staff/tuan.jpg",
-  },
-];
+// Cải tiến: validateAccount nhận EditableAccount hoặc Partial<Account>
+function validateAccount(a: Partial<EditableAccount>): EditingErrors {
+  const errors: EditingErrors = {};
+  if (!a.name || !String(a.name).trim()) errors.name = "Tên không được để trống";
+  if (!a.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(a.email))) errors.email = "Email không hợp lệ";
+  if (a.phone && !/^0\d{9}$/.test(String(a.phone))) errors.phone = "SĐT phải bắt đầu 0 và có 10 chữ số";
+  return errors;
+}
 
-// Force mock via env or query param ?mockStaff=1
-const FORCE_MOCK =
-  import.meta.env.VITE_FORCE_MOCK_STAFF === "1" ||
-  (typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("mockStaff") === "1");
+// Upload stub (replace with real Cloudinary upload or API)
+async function uploadAvatarStub(file: File): Promise<string> {
+  await new Promise(r => setTimeout(r, 600));
+  return URL.createObjectURL(file);
+}
 
-const StaffAccounts: React.FC = () => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [cus, setCus] = useState<CustomerDataFull[]>([]);
-  const [editingRows, setEditingRows] = useState<{
-    [key: number]: Partial<CustomerDataFull & { imageFile?: File }>;
-  }>({});
-  const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
-  //const [backupData, setBackupData] = useState<{ [key: number]: CustomerDataFull | undefined }>({});
-  const [previewImages, setPreviewImages] = useState<{ [key: number]: string }>(
-    {}
-  );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [currentPage, setCurrentPage] = useState(1); // Trang hiện tại
+// ---------------- Component ----------------
+export default function StaffAccountsAdmin() {
+  // data
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
+  // UI
+  const [view, setView] = useState<"cards" | "table">("cards");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | AccountStatus>("");
+  const [roleFilter, setRoleFilter] = useState<"" | Role>("");
+  const [page, setPage] = useState(1);
+
+  // selection + bulk
+  const [selected, setSelected] = useState<Record<number, boolean>>({});
+
+  // edit modal
+  const [editing, setEditing] = useState<EditableAccount | null>(null);
+  const [editingErrors, setEditingErrors] = useState<EditingErrors>({});
+  const [preview, setPreview] = useState<string | null>(null);
+  const [isAdmin] = useState<boolean>(true); // toggle to demo role-based controls
+
+  // load mock
   useEffect(() => {
-    let isMounted = true;
-    const load = async () => {
-      setLoading(true);
-      try {
-        if (FORCE_MOCK) {
-          console.warn("[StaffAccounts] Using forced mock employees");
-          applyMock();
-        } else {
-          await fetchCustomer();
-          // Nếu API trả về chuỗi HTML (trường hợp backend chưa chạy) thì fallback
-          if (Array.isArray(cus) && cus.length === 0) {
-            // Tạm thời không có dữ liệu thực
-            applyMock();
-          }
-        }
-      } catch (e) {
-        console.error("[StaffAccounts] Fetch failed, fallback to mock:", e);
-        applyMock();
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      isMounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setLoading(true);
+    const t = setTimeout(() => {
+      setAccounts(MOCK_ACCOUNTS);
+      setLoading(false);
+    }, 500);
+    return () => clearTimeout(t);
   }, []);
 
-  const applyMock = () => {
-    const now = new Date();
-    // Chuyển mockEmployees -> CustomerDataFull tối thiểu (map field tương đồng)
-    const mapped = mockEmployees.map((m) => ({
-      id: m.staffId,
-      name: m.name,
-      email: m.email,
-      phone: m.phone,
-      address: m.address,
-      imageUrl: m.imageUrl,
-      status: m.status as any,
-      roles: m.position.positionName,
-      createdAt: m.startDate + "T00:00:00Z",
-      updatedAt: m.startDate + "T00:00:00Z",
-      isNew: (now.getTime() - new Date(m.startDate).getTime()) / 1000 < 60,
-    })) as unknown as CustomerDataFull[];
-    setCus(mapped);
-  };
-
-  // Lấy danh sách khách hàng
-  const fetchCustomer = async () => {
-    try {
-      const response = await getAuthStaff();
-      const now = new Date();
-      const sortedCus = response.sort(
-        (a: CustomerDataFull, b: CustomerDataFull) => {
-          const dateA = new Date(a.createdAt);
-          const dateB = new Date(b.createdAt);
-          return dateB.getTime() - dateA.getTime();
-        }
-      );
-      setCus(
-        sortedCus.map((cus: CustomerDataFull) => ({
-          ...cus,
-          isNew:
-            (now.getTime() - new Date(cus.createdAt).getTime()) / 1000 < 60,
-        }))
-      );
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-    }
-  };
-
-  // Chỉnh sửa thông tin khách hàng thay đổi giá trị
-  const handleEditChange = (
-    id: number,
-    field: string,
-    value: string | number | File | null
-  ) => {
-    if (field === "status") return;
-    setEditingRows((prev) => ({
-      ...prev,
-      [id]: {
-        ...prev[id],
-        [field]: value,
-      },
-    }));
-  };
-
-  // Chọn để chỉnh sửa thông tin khách hàng
-  const handleEdit = (id: number) => {
-    // setBackupData((prev) => ({ ...prev, [id]: cus.find(emp => emp.id === id) }));
-    setEditMode((prev) => ({ ...prev, [id]: true }));
-  };
-
-  // Hủy chỉnh sửa thông tin khách hàng
-  const handleCancelEdit = (id: number) => {
-    setEditingRows((prev) => {
-      const newRows = { ...prev };
-      delete newRows[id];
-      return newRows;
+  // derived
+  const filtered = useMemo(() => {
+    return accounts.filter(a => {
+      const bySearch = a.name.toLowerCase().includes(search.toLowerCase()) || a.email.toLowerCase().includes(search.toLowerCase());
+      const byStatus = statusFilter ? a.status === statusFilter : true;
+      const byRole = roleFilter ? a.role === roleFilter : true;
+      return bySearch && byStatus && byRole;
     });
-    setEditMode((prev) => ({ ...prev, [id]: false }));
+  }, [accounts, search, statusFilter, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageItems = useMemo(() => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filtered, page]);
+
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages, page]);
+
+  // selection helpers
+  const toggleSelect = (id: number) => setSelected(s => ({ ...s, [id]: !s[id] }));
+  const selectAllPage = (on: boolean) => {
+    const slice = pageItems.reduce<Record<number, boolean>>((acc, it) => ({ ...acc, [it.id]: on }), {});
+    setSelected(prev => ({ ...prev, ...slice }));
   };
 
-  // Lưu thông tin khách hàng đã chỉnh sửa
-  const handleSaveCus = async (id: number) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn cập nhật thông tin khách hàng này không?"
-      )
-    )
-      return;
+  // actions
+  const openEdit = (acct: Account) => { setEditing({ ...acct }); setPreview(acct.avatar ?? null); setEditingErrors({}); };
+  const closeEdit = () => { setEditing(null); setPreview(null); setEditingErrors({}); };
+
+  const handleAvatarChange = (file?: File) => {
+    if (!file) return;
+    if (file.size > 2_000_000) { toast.error("Ảnh quá lớn (max 2MB)"); return; }
+    const tmp = URL.createObjectURL(file);
+    setPreview(tmp);
+    setEditing(prev => ({ ...(prev as EditableAccount ?? {}), _file: file, avatar: tmp }));
+  };
+
+  const saveEditing = async () => {
+    if (!editing || editing.id == null) return;
+    const errors = validateAccount(editing);
+    if (Object.keys(errors).length) { setEditingErrors(errors); toast.error("Có lỗi dữ liệu"); return; }
 
     try {
-      const updatedCus = cus.find((emp) => emp.id === id);
-      if (!updatedCus) return;
+      // upload if has file
+      const file = editing._file;
+      let avatarUrl = editing.avatar;
+      if (file) avatarUrl = await uploadAvatarStub(file);
 
-      const updatedData = {
-        ...updatedCus,
-        ...editingRows[id],
-      };
+      const updatedAccount: Omit<EditableAccount, '_file'> = { ...editing, avatar: avatarUrl };
 
-      // Nếu có ảnh mới thì upload lên Cloudinary trước
-      if (editingRows[id]?.imageFile) {
-        const formData = new FormData();
-        formData.append("file", editingRows[id].imageFile);
-        formData.append(UPLOAD_PRESET, STAFF);
-
-        try {
-          const uploadResponse = await axios.post(CLOUDINARY_URL, formData);
-
-          updatedData.imageUrl = uploadResponse.data.secure_url;
-        } catch (error: unknown) {
-          console.error("Lỗi khi tải ảnh lên:", error);
-          toast.error("Lỗi khi tải ảnh lên, vui lòng thử lại.");
-          return;
-        }
-      }
-
-      // Cập nhật thông tin khách hàng lên database
-      await updateCustomer(id, updatedData);
-
-      // Refresh danh sách khách hàng
-      await fetchCustomer();
-
-      // Xóa ảnh tạm khỏi state
-      setEditingRows((prev) => {
-        const newRows = { ...prev };
-        delete newRows[id];
-        return newRows;
-      });
-
-      setEditMode((prev) => ({ ...prev, [id]: false }));
-
-      toast.success("Cập nhật thông tin nhân viên thành công!");
-    } catch (error: unknown) {
-      console.error("Lỗi khi cập nhật thông tin :", error);
-      toast.error("Cập nhật thất bại!");
+      setAccounts(prev => prev.map(a => a.id === editing.id ? { ...a, ...updatedAccount } : a));
+      toast.success("Lưu thành công");
+      closeEdit();
+    } catch (err) {
+      console.error(err); toast.error("Lưu thất bại");
     }
   };
 
-  // Xóa khách hàng
-  const handleDeleted = async (id: number) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn xóa tài khoản nhân viên này không?"
-      )
-    )
-      return;
-    try {
-      await deleteCustomer(id);
-      setCus((prev) => prev.filter((emp) => emp.id !== id));
-      await fetchCustomer();
-      toast.success("Xóa tài khoản nhân viên thành công!");
-    } catch (error: unknown) {
-      console.error("Lỗi khi xóa nhân viên:", error);
-      toast.error("Xóa nhân viên thất bại!");
-    }
+  const toggleStatus = (id: number) => {
+    setAccounts(prev => prev.map(a => a.id === id ? { ...a, status: a.status === "ACTIVATE" ? "DEACTIVATED" : "ACTIVATE" } : a));
+    toast.success("Cập nhật trạng thái");
   };
 
-  // block khách hàng
-  const handleBlock = async (id: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn khóa tài khoản này không?"))
-      return;
-    try {
-      const customer = cus.find((emp) => emp.id === id);
-      if (customer?.status === "BLOCKED") {
-        toast.warning(
-          "Tài khoản đã vô hiệu hóa không thể thực hiện thao tác này."
-        );
-        return;
-      }
-      await blockCustomer(id);
-      setCus((prev) => prev.filter((emp) => emp.id !== id));
-      await fetchCustomer();
-      toast.success("Khóa tài khoản thành công!");
-    } catch (error: unknown) {
-      console.error("Lỗi khi khóa tài khoản:", error);
-      toast.error("Khóa tài khoản thất bại!");
-    }
+  const blockAccount = (id: number) => {
+    if (!isAdmin) { toast.error("Không có quyền"); return; }
+    setAccounts(prev => prev.map(a => a.id === id ? { ...a, status: "BLOCKED" } : a));
+    toast.success("Khóa tài khoản");
   };
 
-  // Lọc danh sách nhân viên theo tên và trạng thái
-  const filteredCus = cus.filter((emp) => {
-    return (
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (statusFilter === "" || emp.status === statusFilter)
-    );
-  });
-
-  // Deactivate nhân viên
-  const handleDeactivate = async (id: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn ngưng hoạt động tài khoản này?"))
-      return;
-    try {
-      await deactiveCus(id);
-      await fetchCustomer();
-      toast.success("Ngưng hoạt động taig khoản thành công!");
-    } catch (error: unknown) {
-      console.error("Lỗi khi ngưng hoạt động tài khoản:", error);
-      toast.error("Ngưng hoạt đọng thất bại!");
-    }
+  const deleteAccount = (id: number) => {
+    if (!isAdmin) { toast.error("Không có quyền"); return; }
+    if (!window.confirm("Xác nhận xóa tài khoản?")) return;
+    setAccounts(prev => prev.filter(a => a.id !== id));
+    toast.success("Đã xóa");
   };
 
-  // Activate nhân viên
-  const handleActivate = async (id: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn kích hoạt tài khoản này không?"))
-      return;
-    try {
-      await activeCus(id);
-      await fetchCustomer();
-      toast.success("Kích hoạt tài khoản thành công!");
-    } catch (error: unknown) {
-      console.error("Lỗi khi kích hoạt tài khoản:", error);
-      toast.error("Kích hoạt thất bại!");
-    }
+  // bulk
+  const bulkDeleteSelected = () => {
+    const ids = Object.keys(selected).filter(k => selected[Number(k)]).map(k => Number(k));
+    if (!ids.length) { toast.info("Chưa chọn bản ghi"); return; }
+    if (!window.confirm(`Xóa ${ids.length} tài khoản đã chọn?`)) return;
+    setAccounts(prev => prev.filter(a => !ids.includes(a.id)));
+    setSelected({}); toast.success("Xóa hàng loạt thành công");
   };
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    id: number
-  ) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-
-      // Kiểm tra kích thước ảnh
-      if (file.size > 2048576) {
-        toast.error("Ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.");
-        return;
-      }
-
-      // Tạo URL tạm để xem trước ảnh
-      const previewUrl = URL.createObjectURL(file);
-
-      setPreviewImages((prev) => ({
-        ...prev,
-        [id]: previewUrl,
-      }));
-
-      // Lưu file vào editingRows (không upload ngay)
-      setEditingRows((prev) => ({
-        ...prev,
-        [id]: { ...prev[id], imageFile: file },
-      }));
-    }
+  const bulkExportSelected = () => {
+    const ids = Object.keys(selected).filter(k => selected[Number(k)]).map(k => Number(k));
+    const rows = accounts.filter(a => ids.includes(a.id)).map(a => ({ id: a.id, name: a.name, email: a.email, role: a.role, status: a.status }));
+    downloadCSV(rows, "selected_accounts.csv");
   };
 
-  // Render danh sách khách hàng theo Page
-  const paginatedServices = filteredCus.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
-  const handleChangePage = (_: React.ChangeEvent<unknown>, value: number) => {
-    setCurrentPage(value);
+  // export visible
+  const exportVisible = () => {
+    const rows = filtered.map(a => ({ id: a.id, name: a.name, email: a.email, role: a.role, status: a.status }));
+    downloadCSV(rows, "accounts_visible.csv");
   };
 
-  // Đổi mật khẩu
-  // Đổi mật khẩu - Renamed to avoid conflict with imported function
-  const handleChangePasswordInStaffAccounts = async (
-    userId: number,
-    oldPass: string,
-    newPass: string
-  ): Promise<boolean> => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn đặt lại mật khẩu cho tài khoản này không?"
-      )
-    )
-      return false;
-    try {
-      const staffMember = cus.find((emp) => emp.id === userId);
-      if (staffMember?.status === "BLOCKED") {
-        toast.warning(
-          "Tài khoản đã vô hiệu hóa không thể thực hiện thao tác này."
-        );
-        return false;
-      }
-      const data: ChangePasswordData = {
-        userId,
-        oldPassword: oldPass,
-        newPassword: newPass,
-      };
-      await changePassword(data); // Use the aliased API service function
-      // fetchCustomer() is usually not needed after password change unless UI reflects it
-      toast.success("Đặt lại mật khẩu tài khoản thành công!");
-      return true; // Indicate success
-    } catch (error: unknown) {
-      console.error("Lỗi khi đặt lại mật khẩu tài khoản:", error);
-      if (axios.isAxiosError(error) && error.response) {
-        toast.error(
-          error.response.data?.message ||
-            "Đặt lại mật khẩu thất bại! Kiểm tra lại mật khẩu cũ."
-        );
-      } else {
-        toast.error("Đặt lại mật khẩu thất bại!");
-      }
-      return false; // Indicate failure
-    }
-  };
+  if (loading) return <div className="p-6">Loading...</div>;
+  return (
+    <div className="p-6">
+      <ToastContainer />
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[70vh] gap-y-4">
-        <div className="relative h-[100px] w-[100px]">
-          <div className="animate-spin rounded-full h-[90px] w-[90px] border-t-2 border-l-2 border-teal-400 absolute"></div>
-          <div className="animate-spin rounded-full h-[80px] w-[80px] border-t-2 border-r-2 border-purple-400 absolute top-1 left-1"></div>
-          <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-green-400 absolute top-2 left-2"></div>
-          <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-blue-400 absolute top-2 left-2"></div>
-          <div className="animate-spin rounded-full h-[70px] w-[70px] border-b-2 border-red-400 absolute top-2 left-2"></div>
-        </div>
-        <div className="flex items-center">
-          <FaLeaf className="animate-bounce text-green-400 text-xl mr-2" />
-          <span className="text-gray-600 text-sm">Đang tải dữ liệu...</span>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Quản lý tài khoản</h1>
+        <div className="flex gap-2">
+          <button onClick={() => setView(v => v === "cards" ? "table" : "cards")} className="px-3 py-2 bg-gray-100 rounded">{view === "cards" ? "Bảng" : "Thẻ"}</button>
+          <div className="relative">
+            <button onClick={exportVisible} className="px-3 py-2 bg-green-600 text-white rounded flex items-center gap-2"><FaFileCsv /> Xuất</button>
+          </div>
         </div>
       </div>
-    );
-  }
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="sm:p-6 p-1 mb-8 sm:mt-0 mt-10"
-    >
-      <ToastContainer />
-      <h2 className="sm:text-2xl text-[18px] font-bold mb-6">
-        Danh sách tài khoản nhân viên 🦷
-      </h2>
-      <div className="flex sm:gap-4 gap-1 mb-2 sm:flex-row">
-        <input
-          type="text"
-          placeholder="Tìm kiếm theo tên..."
-          className="border p-4 rounded-full w-full  text-[12px] sm:text-[16px] dark:text-black"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <select
-          className="border sm:p-4 p-1 rounded-full text-[12px] sm:text-[16px] dark:text-black"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
+
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input className="border rounded px-3 py-2 w-full sm:w-64" placeholder="Tìm tên hoặc email..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+        <select className="border rounded px-3 py-2" value={statusFilter} onChange={e => { setStatusFilter(e.target.value as AccountStatus | ""); setPage(1); }}>
           <option value="">Tất cả trạng thái</option>
           <option value="ACTIVATE">Hoạt động</option>
-          <option value="DEACTIVATED">Không hoạt động</option>
-          <option value="BLOCKED">Đã bị khóa</option>
+          <option value="DEACTIVATED">Ngừng</option>
+          <option value="BLOCKED">Bị khóa</option>
         </select>
+        <select className="border rounded px-3 py-2" value={roleFilter} onChange={e => { setRoleFilter(e.target.value as Role | ""); setPage(1); }}>
+          <option value="">Tất cả vai trò</option>
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+          <option value="user">User</option>
+        </select>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => selectAllPage(true)} className="px-2 py-1 bg-gray-100 rounded">Chọn trang</button>
+          <button onClick={() => selectAllPage(false)} className="px-2 py-1 bg-gray-100 rounded">Bỏ chọn trang</button>
+          <button onClick={bulkExportSelected} className="px-2 py-1 bg-indigo-500 text-white rounded">Xuất chọn</button>
+          <button onClick={bulkDeleteSelected} className="px-2 py-1 bg-red-500 text-white rounded">Xóa chọn</button>
+        </div>
       </div>
 
-      {paginatedServices.length > 0 ? (
-        <div className="grid sm:gap-6 gap-3 sm:gap-y-10 gap-y-5 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 mt-8">
-          {paginatedServices.map((cus) => (
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              key={cus.id}
-              className="bg-white sm:p-4 p-2 rounded-lg shadow-md "
-            >
-              <div className="mt-4 text-center dark:text-black">
-                {editMode[cus.id] ? (
-                  <>
-                    <motion.img
-                      whileHover={{ scale: 1.1 }}
-                      src={
-                        previewImages[cus.id] ||
-                        editingRows[cus.id]?.imageUrl ||
-                        cus.imageUrl
-                      }
-                      alt="Ảnh"
-                      className="sm:w-24 sm:h-24 w-16 h-16 mx-auto rounded-full object-cover cursor-pointer outline outline-green-500"
-                      onClick={() =>
-                        document.getElementById(`file-input-${cus.id}`)?.click()
-                      }
-                    />
-                    <input
-                      type="file"
-                      id={`file-input-${cus.id}`}
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, cus.id)}
-                    />
-                    <label className="block text-gray-600 sm:text-sm text-[12px] m-1 text-justify">
-                      Họ và tên
-                    </label>
-                    <input
-                      className="w-full border p-2 rounded sm:text-sm text-[12px]"
-                      value={editingRows[cus.id]?.name ?? cus.name}
-                      onChange={(e) =>
-                        handleEditChange(cus.id, "name", e.target.value)
-                      }
-                    />
-                    <label className="block text-gray-600 sm:text-sm text-[12px] m-1 text-justify">
-                      Email
-                    </label>
-                    <input
-                      className="w-full border p-2 rounded sm:text-sm text-[12px]"
-                      value={editingRows[cus.id]?.email ?? cus.email}
-                      onChange={(e) =>
-                        handleEditChange(cus.id, "email", e.target.value)
-                      }
-                    />
-                    <label className="block text-gray-600 sm:text-sm text-[12px] m-1 text-justify">
-                      Số điện thoại
-                    </label>
-                    <input
-                      className="w-full border p-2 rounded  sm:text-sm text-[12px]"
-                      value={editingRows[cus.id]?.phone ?? cus.phone}
-                      onChange={(e) =>
-                        handleEditChange(cus.id, "phone", e.target.value)
-                      }
-                    />
-                    <label className="block text-gray-600 sm:text-sm text-[12px] m-1 text-justify">
-                      Địa chỉ
-                    </label>
-                    <input
-                      className="w-full border p-2 rounded sm:text-sm text-[12px]"
-                      value={editingRows[cus.id]?.address ?? cus.address}
-                      onChange={(e) =>
-                        handleEditChange(cus.id, "address", e.target.value)
-                      }
-                    />
-
-                    <CHangePassword_Profile
-                      userId={cus.id}
-                      onSave={handleChangePasswordInStaffAccounts}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <div
-                      className={`bg-green-400/20 py-2 rounded-md ${cus.status === "BLOCKED" ? "bg-red-400/20" : ""}
-                                     ${cus.status === "DEACTIVATED" ? "bg-orange-400/20" : ""}
-                                    `}
-                    >
-                      <img
-                        src={cus.imageUrl}
-                        alt="Ảnh"
-                        className={`sm:w-24 sm:h-24 w-16 h-16 mx-auto rounded-full object-cover outline outline-green-500 ${cus.status === "BLOCKED" ? "outline-red-500" : ""}
-                                            ${cus.status === "DEACTIVATED" ? "outline-orange-500" : ""}
-                                        `}
-                      />
+      {/* Main view */}
+      {view === "cards" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {pageItems.map(a => (
+            <div key={a.id} className="bg-white rounded shadow p-4">
+              <div className="flex items-center gap-3">
+                <img src={a.avatar} alt="avatar" className="w-14 h-14 rounded-full object-cover" />
+                <div className="flex-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-semibold">{a.name}</div>
+                      <div className="text-xs text-gray-500">{a.email}</div>
                     </div>
-
-                    <div
-                      className="text-start sm:h-[126px] h-[120px]"
-                      style={{ lineHeight: "1.9" }}
-                    >
-                      <p className="sm:text-lg text-[14px] font-semibold">
-                        {cus.name}
-                      </p>
-                      <p className=" text-gray-400 sm:text-[14px] text-[12px] sm:line-clamp-none line-clamp-1">
-                        Email: {cus.email}
-                      </p>
-                      <p className=" text-gray-400 sm:text-[14px] text-[12px]">
-                        Sdt: {cus.phone}
-                      </p>
-                      <p className=" text-gray-400 sm:text-[14px] text-[12px] line-clamp-2">
-                        Địa chỉ: {cus.address}
-                      </p>
-                    </div>
-                  </>
-                )}
-                <p
-                  className={`mt-2 px-2 py-1 rounded-2xl text-sm ${cus.status === "ACTIVATE" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}
-                >
-                  <span
-                    className="animate-ping"
-                    style={{
-                      width: "8px",
-                      marginRight: "10px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      display: "inline-block",
-                      backgroundColor:
-                        cus.status === "ACTIVATE" ? "#10B981" : "#EF4444",
-                    }}
-                  ></span>
-                  {cus.status === "ACTIVATE"
-                    ? "Đang hoạt động"
-                    : cus.status === "BLOCKED"
-                      ? "Tài khoản bị khóa"
-                      : "Ngừng hoạt động"}
-                </p>
-                <div className="mt-4 flex justify-center gap-2">
-                  {editMode[cus.id] ? (
-                    <>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        onClick={() => handleSaveCus(cus.id)}
-                        className="sm:px-4 sm:py-2 p-1 sm:text-sm text-[12px] bg-blue-200 text-white rounded hover:bg-blue-500"
-                      >
-                        Lưu
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        onClick={() => handleCancelEdit(cus.id)}
-                        className="sm:px-4 sm:py-2 p-1 sm:text-sm text-[12px] bg-gray-200 text-white rounded hover:bg-gray-500"
-                      >
-                        Hoàn Tác
-                      </motion.button>
-
-                      {cus.status === "ACTIVATE" && user?.roles === "admin" && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          title="Ngừng hoạt động tạm thời"
-                          onClick={() => handleDeactivate(cus.id)}
-                          className="sm:px-4 sm:py-2 p-1 bg-red-200 text-white rounded hover:bg-red-500"
-                        >
-                          <ContentPasteOffOutlined />
-                        </motion.button>
-                      )}
-
-                      {(cus.status === "DEACTIVATED" ||
-                        cus.status === "BLOCKED") && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          title="Kích hoạt tài khoản"
-                          onClick={() => handleActivate(cus.id)}
-                          className="sm:px-4 sm:py-2 p-1 bg-green-200 text-white rounded hover:bg-green-500"
-                        >
-                          <ContentPasteOutlined />
-                        </motion.button>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex flex-col w-full">
-                      {user?.roles === "admin" && (
-                        <div className="flex sm:gap-3 gap-1 mb-3">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            title="Khóa tài khoản khách hàng"
-                            onClick={() => handleBlock(cus.id)}
-                            className="sm:px-5 sm:py-1 px-2 py-2  bg-orange-300 text-white rounded hover:bg-orange-500"
-                          >
-                            <Ban className="sm:w-5 sm:h-5 w-4 h-4" />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            title="Xóa khách hàng"
-                            onClick={() => handleDeleted(cus.id)}
-                            className="sm:px-5 sm:py-1 px-2 py-2 bg-red-300 text-white rounded hover:bg-red-500"
-                          >
-                            <Trash2 className="sm:w-5 sm:h-5 w-4 h-4" />
-                          </motion.button>
-                        </div>
-                      )}
-
-                      <motion.button
-                        onClick={() => handleEdit(cus.id)}
-                        className="sm:px-3 sm:py-2 p-1 bg-blue-300 text-white rounded hover:bg-blue-500 flex items-center justify-center gap-2"
-                      >
-                        <Edit3 className="sm:w-5 sm:h-5 w-4 h-4" /> Chỉnh sửa
-                      </motion.button>
-                    </div>
-                  )}
+                    <div className="text-xs px-2 py-1 rounded text-white" style={{ background: a.status === "ACTIVATE" ? "#059669" : a.status === "BLOCKED" ? "#EF4444" : "#F97316" }}>{a.status}</div>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">{a.role}</div>
                 </div>
               </div>
-            </motion.div>
+
+              <div className="mt-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!selected[a.id]} onChange={() => toggleSelect(a.id)} />
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => openEdit(a)} className="px-2 py-1 bg-blue-200 rounded"><Edit3 /></button>
+                  {isAdmin && <button onClick={() => blockAccount(a.id)} className="px-2 py-1 bg-orange-200 rounded"><Ban /></button>}
+                  <button onClick={() => toggleStatus(a.id)} className="px-2 py-1 bg-yellow-200 rounded"><UserX /></button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
-        <RenderNotFound />
-      )}
-
-      {/* Phân trang */}
-      {paginatedServices.length > 0 && (
-        <div className="flex justify-center mt-6">
-          <Pagination
-            count={Math.ceil(cus.length / pageSize)}
-            page={currentPage}
-            onChange={handleChangePage}
-            color="primary"
-          />
+        <div className="bg-white rounded shadow overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-2"><input type="checkbox" onChange={(e) => selectAllPage(e.target.checked)} /></th>
+                <th className="p-2">Mã</th>
+                <th className="p-2">Tên</th>
+                <th className="p-2">Email</th>
+                <th className="p-2">Vai trò</th>
+                <th className="p-2">Trạng thái</th>
+                <th className="p-2">Ngày tạo</th>
+                <th className="p-2 text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map(a => (
+                <tr key={a.id} className="border-t hover:bg-gray-50">
+                  <td className="p-2"><input type="checkbox" checked={!!selected[a.id]} onChange={() => toggleSelect(a.id)} /></td>
+                  <td className="p-2">{a.id}</td>
+                  <td className="p-2 flex items-center gap-2"><img src={a.avatar} alt="avatar" className="w-8 h-8 rounded-full object-cover" />{a.name}</td>
+                  <td className="p-2">{a.email}</td>
+                  <td className="p-2">{a.role}</td>
+                  <td className="p-2">{a.status}</td>
+                  <td className="p-2">{new Date(a.createdAt).toLocaleDateString()}</td>
+                  <td className="p-2 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => openEdit(a)} className="px-2 py-1 bg-blue-200 rounded"><Edit3 /></button>
+                      {isAdmin && <button onClick={() => blockAccount(a.id)} className="px-2 py-1 bg-orange-200 rounded"><Ban /></button>}
+                      <button onClick={() => deleteAccount(a.id)} className="px-2 py-1 bg-red-200 rounded"><Trash2 /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-    </motion.div>
-  );
-};
 
-export default StaffAccounts;
+      {/* Pagination */}
+      <div className="flex items-center justify-center gap-3 mt-6">
+        <button onClick={() => setPage(p => Math.max(1, p - 1))} className="px-3 py-1 border rounded">Prev</button>
+        <div className="px-3 py-1 bg-gray-100 rounded">{page} / {totalPages}</div>
+        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="px-3 py-1 border rounded">Next</button>
+      </div>
+
+      {/* Edit modal */}
+      <AnimatePresence>
+        {editing && (
+          <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="bg-white rounded-lg p-4 w-full max-w-md" initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}>
+              <h3 className="text-lg font-semibold mb-3">Chỉnh sửa tài khoản</h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs">Họ & tên</label>
+                  <input className={`w-full border rounded px-3 py-2 ${editingErrors.name ? 'border-red-500' : ''}`} value={editing.name ?? ''} onChange={e => setEditing(prev => ({
+                    ...(prev as EditableAccount),
+                    name: e.target.value
+                  }))} />
+                  {editingErrors.name && <div className="text-red-500 text-xs">{editingErrors.name}</div>}
+                </div>
+                <div>
+                  <label className="text-xs">Email</label>
+                  <input className={`w-full border rounded px-3 py-2 ${editingErrors.email ? 'border-red-500' : ''}`} value={editing.email ?? ''} onChange={e => setEditing(prev => ({
+                    ...(prev as EditableAccount),
+                    email: e.target.value
+                  }))} />
+                  {editingErrors.email && <div className="text-red-500 text-xs">{editingErrors.email}</div>}
+                </div>
+                <div>
+                  <label className="text-xs">SĐT</label>
+                  <input className={`w-full border rounded px-3 py-2 ${editingErrors.phone ? 'border-red-500' : ''}`} value={editing.phone ?? ''} onChange={e => setEditing(prev => ({
+                    ...(prev as EditableAccount),
+                    phone: e.target.value
+                  }))} />
+                  {editingErrors.phone && <div className="text-red-500 text-xs">{editingErrors.phone}</div>}
+                </div>
+                <div>
+                  <label className="text-xs">Avatar</label>
+                  <div className="flex items-center gap-3">
+                    <img src={preview ?? editing.avatar} alt="preview" className="w-12 h-12 rounded-full object-cover" />
+                    <input type="file" accept="image/*" onChange={e => handleAvatarChange(e.target.files?.[0] ?? undefined)} />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
+                  <button onClick={closeEdit} className="px-3 py-2 bg-gray-200 rounded">Hủy</button>
+                  <button onClick={saveEditing} className="px-3 py-2 bg-indigo-600 text-white rounded flex items-center gap-2"><FaLock /> Lưu</button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

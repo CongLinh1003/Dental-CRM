@@ -1,20 +1,56 @@
 import { useEffect, useState } from "react";
 import { Sun, Moon, ChevronLeft } from "lucide-react"; // Icon từ lucide-react (có thể đổi sang MUI)
+import { useTranslation } from "react-i18next";
 
 const SettingsDetail: React.FC = () => {
+
+  // Quản lý ngôn ngữ (có thể mở rộng trong tương lai)
+  const { i18n } = useTranslation();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Quản lý trạng thái theme (light/dark)
   const [theme, setTheme] = useState<"light" | "dark">(
     localStorage.getItem("theme") === "dark" ? "dark" : "light"
   );
 
   // Khi theme thay đổi -> cập nhật class của <html> và lưu vào localStorage
   useEffect(() => {
+
+    setHasMounted(true);
+    const savedLanguage = localStorage.getItem('language');
+    if (savedLanguage && savedLanguage !== i18n.language) {
+      i18n.changeLanguage(savedLanguage);
+    }
+
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
     localStorage.setItem("theme", theme);
-  }, [theme]);
+  }, [theme, i18n]);
+
+  const changeLanguage = (lng: string) => {
+    i18n.changeLanguage(lng);
+    localStorage.setItem('language', lng);
+  };
+
+  if (!hasMounted) {
+    return (
+      <div className="flex gap-2">
+        <button
+          className={`text-sm font-bold p-2 rounded-md bg-blue-500 text-white`}
+        >
+          VI
+        </button>
+        <button
+          className={`text-sm font-bold p-2 rounded-md bg-gray-200 text-gray-800`}
+        >
+          EN
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex flex-col items-center justify-center  bg-white dark:bg-gray-800 p-9" style={
@@ -36,6 +72,8 @@ const SettingsDetail: React.FC = () => {
         <div>
           <p className="sm:text-lg text-sm font-medium text-gray-700 dark:text-gray-200">Ngôn ngữ</p>
           <select
+            value={i18n.language}
+            onChange={(e) => changeLanguage(e.target.value)}
             className="border-2 sm:text-lg text-sm border-gray-300 rounded-md w-full p-2 mt-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200"
           >
             <option value="vi">Tiếng Việt</option>
@@ -49,8 +87,8 @@ const SettingsDetail: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               className={`flex items-center gap-2 p-2 rounded-lg sm:text-lg text-sm transition ${theme === "light"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "bg-gray-300 dark:bg-gray-700 dark:text-gray-200"
+                ? "bg-blue-500 text-white shadow-md"
+                : "bg-gray-300 dark:bg-gray-700 dark:text-gray-200"
                 }`}
               onClick={() => setTheme("light")}
             >
@@ -60,8 +98,8 @@ const SettingsDetail: React.FC = () => {
 
             <button
               className={`flex items-center gap-2 p-2 rounded-lg sm:text-lg text-sm transition ${theme === "dark"
-                  ? "bg-blue-500 text-white shadow-md"
-                  : "bg-gray-300 dark:bg-gray-700 dark:text-gray-200"
+                ? "bg-blue-500 text-white shadow-md"
+                : "bg-gray-300 dark:bg-gray-700 dark:text-gray-200"
                 }`}
               onClick={() => setTheme("dark")}
             >

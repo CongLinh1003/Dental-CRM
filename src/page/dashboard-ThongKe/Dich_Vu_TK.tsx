@@ -95,7 +95,6 @@ const DichVuTK: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-[70vh] gap-y-4">
                 <motion.div
                     initial={{ scale: 0 }}
-                    animate={{ scale: [0, 1.2, 1] }}
                     transition={{ duration: 1, type: "spring", stiffness: 200 }}
                     className="relative h-24 w-24 rounded-full border-4 border-t-4 border-gray-200"
                 >
